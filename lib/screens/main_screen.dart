@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'dashboard/dashboard_screen.dart';
-import 'transactions/transactions_screen.dart';
-import 'budgets/budgets_screen.dart';
+
 import 'accounts/accounts_screen.dart';
+import 'budgets/budgets_screen.dart';
+import 'dashboard/dashboard_screen.dart';
 import 'reports/reports_screen.dart';
 import 'transactions/add_transaction_screen.dart';
+import 'transactions/transactions_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -65,10 +66,14 @@ class _MainScreenState extends State<MainScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const AddTransactionScreen()),
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true, // Allows the modal to take up almost full screen height
+            useSafeArea: true,
+            builder: (ctx) => const AddTransactionScreen(),
           );
         },
+        tooltip: 'Add new transaction', // Added tooltip for accessibility
         child: const Icon(Icons.add),
       ),
     );

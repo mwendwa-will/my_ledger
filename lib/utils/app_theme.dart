@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'constants.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+import 'constants.dart';
 
 class AppTheme {
   static ThemeData get lightTheme {
@@ -27,13 +28,20 @@ class AppTheme {
         surface: AppColors.surface,
         onSurface: AppColors.onSurface,
       ),
-      textTheme: GoogleFonts.interTextTheme(),
+      textTheme: GoogleFonts.interTextTheme().copyWith(
+        displayLarge: GoogleFonts.inter(fontSize: 57, fontWeight: FontWeight.w400, color: AppColors.onSurface),
+        headlineMedium: GoogleFonts.inter(fontSize: 28, fontWeight: FontWeight.w400, color: AppColors.onSurface),
+        titleLarge: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w400, color: AppColors.onSurface),
+        bodyLarge: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w400, color: AppColors.onSurface),
+        bodyMedium: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w400, color: AppColors.onSurface),
+        labelLarge: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.onSurface),
+      ),
       appBarTheme: const AppBarTheme(
         centerTitle: true,
         backgroundColor: AppColors.background,
         elevation: 0,
       ),
-      cardTheme: CardThemeData(
+      cardTheme: CardThemeData( // Use Card instead of CardThemeData
         elevation: 0,
         shape: RoundedRectangleBorder(
           side: BorderSide(color: Colors.grey.shade200),
@@ -45,7 +53,7 @@ class AppTheme {
         style: ElevatedButton.styleFrom(
           elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall), // Use constant
           ),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         ),
@@ -54,7 +62,7 @@ class AppTheme {
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
         elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium)), // Use constant
       ),
     );
   }
@@ -66,8 +74,15 @@ class AppTheme {
         seedColor: AppColors.primary,
         brightness: Brightness.dark,
       ),
-      textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
-      cardTheme: CardThemeData(
+      textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme).copyWith(
+        displayLarge: GoogleFonts.inter(fontSize: 57, fontWeight: FontWeight.w400, color: AppColors.onSurface),
+        headlineMedium: GoogleFonts.inter(fontSize: 28, fontWeight: FontWeight.w400, color: AppColors.onSurface),
+        titleLarge: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w400, color: AppColors.onSurface),
+        bodyLarge: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w400, color: AppColors.onSurface),
+        bodyMedium: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w400, color: AppColors.onSurface),
+        labelLarge: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.onSurface),
+      ),
+      cardTheme: CardThemeData( // Use Card instead of CardThemeData
         elevation: 0,
         shape: RoundedRectangleBorder(
           side: const BorderSide(color: Colors.white10),
@@ -82,7 +97,7 @@ class AppTheme {
         backgroundColor: AppColors.primaryContainer,
         foregroundColor: AppColors.onPrimaryContainer,
         elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium)), // Use constant
       ),
     );
   }

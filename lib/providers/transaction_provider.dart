@@ -4,11 +4,6 @@ import '../services/database_service.dart';
 import 'account_provider.dart';
 
 class TransactionFilter {
-  final DateTime? startDate;
-  final DateTime? endDate;
-  final int? categoryId;
-  final int? accountId;
-  final String? searchQuery;
 
   TransactionFilter({
     this.startDate,
@@ -17,6 +12,11 @@ class TransactionFilter {
     this.accountId,
     this.searchQuery,
   });
+  final DateTime? startDate;
+  final DateTime? endDate;
+  final int? categoryId;
+  final int? accountId;
+  final String? searchQuery;
 
   TransactionFilter copyWith({
     DateTime? startDate,
@@ -56,7 +56,7 @@ class TransactionsNotifier extends AsyncNotifier<List<TransactionItem>> {
   @override
   Future<List<TransactionItem>> build() async {
     final filter = ref.watch(transactionFilterProvider);
-    return await DatabaseService.instance.getTransactions(
+    return DatabaseService.instance.getTransactions(
       startDate: filter.startDate,
       endDate: filter.endDate,
       categoryId: filter.categoryId,
@@ -74,7 +74,7 @@ class TransactionsNotifier extends AsyncNotifier<List<TransactionItem>> {
       
       // Re-fetch transactions based on current filter
       final filter = ref.read(transactionFilterProvider);
-      return await DatabaseService.instance.getTransactions(
+      return DatabaseService.instance.getTransactions(
         startDate: filter.startDate,
         endDate: filter.endDate,
         categoryId: filter.categoryId,
@@ -90,7 +90,7 @@ class TransactionsNotifier extends AsyncNotifier<List<TransactionItem>> {
       ref.invalidate(accountsProvider);
       
       final filter = ref.read(transactionFilterProvider);
-      return await DatabaseService.instance.getTransactions(
+      return DatabaseService.instance.getTransactions(
         startDate: filter.startDate,
         endDate: filter.endDate,
         categoryId: filter.categoryId,

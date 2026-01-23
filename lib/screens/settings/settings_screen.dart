@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/settings_provider.dart';
+import 'categories/categories_screen.dart';
 import '../../services/backup_service.dart';
 import '../../utils/constants.dart';
 import 'package:sqflite/sqflite.dart';
@@ -32,27 +34,46 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     });
   }
 
-  Future<void> _toggleBiometric(bool value) async {
-    final prefs = await SharedPreferences.getInstance();
+  Future<void> _toggleBiometric(BuildContext context, bool value) async {
     if (value) {
-      final bool canAuthenticateWithBiometrics = await auth.canCheckBiometrics;
-      if (canAuthenticateWithBiometrics) {
-        bool authenticated = await auth.authenticate(
-          localizedReason: 'Authenticate to enable biometric lock',
-          options: const AuthenticationOptions(stickyAuth: true),
-        );
-        if (authenticated) {
-          await prefs.setBool('biometric_enabled', true);
-          setState(() => _isBiometricEnabled = true);
-        }
+      final resultMessage = await _enableBiometricFlow();
+      if (!mounted) return;
+      if (resultMessage != null) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(resultMessage)));
       } else {
-          if (mounted) {
-            ScaffoldMessenger.of(context as BuildContext).showSnackBar(const SnackBar(content: Text('Biometrics not available on this device')));
-          }
+        setState(() => _isBiometricEnabled = true);
       }
     } else {
+      final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('biometric_enabled', false);
-      setState(() => _isBiometricEnabled = false);
+      if (mounted) setState(() => _isBiometricEnabled = false);
+    }
+  }
+
+  Future<String?> _enableBiometricFlow() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final canAuthenticateWithBiometrics = await auth.canCheckBiometrics;
+      final isDeviceSupported = await auth.isDeviceSupported();
+      if (!canAuthenticateWithBiometrics || !isDeviceSupported) {
+        return 'Biometrics not available on this device';
+      }
+
+      final authenticated = await auth.authenticate(
+        localizedReason: 'Authenticate to enable biometric lock',
+        options: const AuthenticationOptions(stickyAuth: true),
+      );
+
+      if (authenticated) {
+        await prefs.setBool('biometric_enabled', true);
+        return null;
+      }
+
+      return 'Authentication failed';
+    } on PlatformException catch (e) {
+      return 'Biometric authentication not available: ${e.message}';
+    } catch (e) {
+      return 'Biometric error: $e';
     }
   }
 
@@ -65,7 +86,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         children: [
-          _buildSectionHeader('Appearance'),
+          _buildSectionHeader(context, 'Appearance'),
           SwitchListTile(
             title: const Text('Dark Mode'),
             value: isDarkMode,
@@ -75,30 +96,39 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             secondary: const Icon(Icons.dark_mode),
           ),
           
-          _buildSectionHeader('General'),
+          _buildSectionHeader(context, 'General'),
+          ListTile(
+            title: const Text('Categories'),
+            leading: const Icon(Icons.category),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const CategoriesScreen()),
+              );
+            },
+          ),
           ListTile(
             title: const Text('Currency Symbol'),
             subtitle: Text(currency),
             leading: const Icon(Icons.attach_money),
             onTap: () {
-              _showCurrencyDialog(ref);
+              _showCurrencyDialog(context, ref);
             },
           ),
           SwitchListTile(
             title: const Text('Biometric Security'),
             subtitle: const Text('Require fingerprint/face to open app'),
             value: _isBiometricEnabled,
-            onChanged: _toggleBiometric,
+            onChanged: (val) => _toggleBiometric(context, val),
             secondary: const Icon(Icons.fingerprint),
           ),
           
-          _buildSectionHeader('Data Management'),
+          _buildSectionHeader(context, 'Data Management'),
           ListTile(
             title: const Text('Backup Data'),
             subtitle: const Text('Export database file'),
             leading: const Icon(Icons.upload),
             onTap: () async {
-              final messenger = ScaffoldMessenger.of(this.context);
+              final messenger = ScaffoldMessenger.of(context);
               try {
                 await BackupService.exportDatabase();
               } catch (e) {
@@ -111,7 +141,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             subtitle: const Text('Import database file'),
             leading: const Icon(Icons.download),
             onTap: () async {
-              final messenger = ScaffoldMessenger.of(this.context);
+              final messenger = ScaffoldMessenger.of(context);
               try {
                 final success = await BackupService.importDatabase();
                 if (success) {
@@ -127,7 +157,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             subtitle: const Text('Delete all accounts and transactions'),
             leading: const Icon(Icons.delete_forever, color: AppColors.error),
             onTap: () {
-              _showDeleteAllDialog();
+              _showDeleteAllDialog(context);
             },
           ),
           
@@ -138,35 +168,38 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  Widget _buildSectionHeader(String title) {
+  Widget _buildSectionHeader(BuildContext context, String title) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
         child: Text(
         title,
         style: TextStyle(
-          color: Theme.of(this.context).colorScheme.primary,
+          color: Theme.of(context).colorScheme.primary,
           fontWeight: FontWeight.bold,
           fontSize: 14,
         ),
       ),
     );
   }
-  void _showCurrencyDialog(WidgetRef ref) {
-    final controller = TextEditingController(text: ref.read(currencySymbolProvider));
+  void _showCurrencyDialog(BuildContext context, WidgetRef ref) {
+    final controller = TextEditingController(text: ref.read(currencyCodeProvider));
     showDialog(
-      context: this.context,
+      context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Set Currency Symbol'),
-        content: TextField(
-          controller: controller,
-          maxLength: 3,
-          decoration: const InputDecoration(labelText: 'Symbol'),
+        title: const Text('Set Currency Code'),
+        content: Semantics(
+          label: 'Currency Code input field', // Explicit semantic label
+          child: TextField(
+            controller: controller,
+            maxLength: 3,
+            decoration: const InputDecoration(labelText: 'Currency Code (e.g. USD)'),
+          ),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           TextButton(
             onPressed: () {
-              ref.read(currencySymbolProvider.notifier).setCurrency(controller.text);
+              ref.read(currencyCodeProvider.notifier).setCurrencyCode(controller.text.toUpperCase());
               Navigator.pop(ctx);
             },
             child: const Text('Save'),
@@ -176,9 +209,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  void _showDeleteAllDialog() {
+  void _showDeleteAllDialog(BuildContext context) {
     showDialog(
-      context: this.context,
+      context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete All Data?'),
         content: const Text('This will permanently delete all your data. This action cannot be undone.'),

@@ -64,7 +64,7 @@ class AccountsScreen extends ConsumerWidget {
                 key: Key('account_${account.id}'),
                 direction: DismissDirection.endToStart,
                 confirmDismiss: (direction) async {
-                  return await showDialog(
+                  return showDialog(
                     context: context,
                     builder: (ctx) => AlertDialog(
                       title: const Text('Delete Account?'),

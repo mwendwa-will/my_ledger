@@ -9,28 +9,28 @@ final accountsProvider = AsyncNotifierProvider<AccountsNotifier, List<Account>>(
 class AccountsNotifier extends AsyncNotifier<List<Account>> {
   @override
   Future<List<Account>> build() async {
-    return await DatabaseService.instance.getAllAccounts();
+    return DatabaseService.instance.getAllAccounts();
   }
 
   Future<void> addAccount(Account account) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       await DatabaseService.instance.createAccount(account);
-      return await DatabaseService.instance.getAllAccounts();
+      return DatabaseService.instance.getAllAccounts();
     });
   }
   
   Future<void> updateAccount(Account account) async {
     state = await AsyncValue.guard(() async {
       await DatabaseService.instance.updateAccount(account);
-      return await DatabaseService.instance.getAllAccounts();
+      return DatabaseService.instance.getAllAccounts();
     });
   }
 
   Future<void> deleteAccount(int id) async {
     state = await AsyncValue.guard(() async {
       await DatabaseService.instance.deleteAccount(id);
-      return await DatabaseService.instance.getAllAccounts();
+      return DatabaseService.instance.getAllAccounts();
     });
   }
 }
@@ -46,6 +46,6 @@ final totalBalanceProvider = Provider<double>((ref) {
 final accountMapProvider = Provider<AsyncValue<Map<int, Account>>>((ref) {
   final accountsAsync = ref.watch(accountsProvider);
   return accountsAsync.whenData((accounts) {
-    return {for (var a in accounts) a.id!: a};
+    return {for (final a in accounts) a.id!: a};
   });
 });

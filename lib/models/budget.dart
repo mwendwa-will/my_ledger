@@ -1,12 +1,4 @@
 class Budget {
-  final int? id;
-  final int categoryId;
-  final double amount;
-  final int month; // 1-12
-  final int year; // 2024, etc.
-  
-  // Not persisted, but useful for UI calculation
-  final double? spent;
 
   Budget({
     this.id,
@@ -16,6 +8,25 @@ class Budget {
     required this.year,
     this.spent,
   });
+
+  factory Budget.fromMap(Map<String, dynamic> map) {
+    return Budget(
+      id: map['id'],
+      categoryId: map['category_id'],
+      amount: map['amount'],
+      month: map['month'],
+      year: map['year'],
+      spent: map['spent'], // This might be injected from a join query
+    );
+  }
+  final int? id;
+  final int categoryId;
+  final double amount;
+  final int month; // 1-12
+  final int year; // 2024, etc.
+  
+  // Not persisted, but useful for UI calculation
+  final double? spent;
 
   Budget copyWith({
     int? id,
@@ -43,16 +54,5 @@ class Budget {
       'month': month,
       'year': year,
     };
-  }
-
-  factory Budget.fromMap(Map<String, dynamic> map) {
-    return Budget(
-      id: map['id'],
-      categoryId: map['category_id'],
-      amount: map['amount'],
-      month: map['month'],
-      year: map['year'],
-      spent: map['spent'], // This might be injected from a join query
-    );
   }
 }

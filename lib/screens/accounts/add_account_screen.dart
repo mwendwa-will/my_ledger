@@ -5,10 +5,10 @@ import '../../models/enums.dart';
 import '../../providers/account_provider.dart';
 import '../../utils/constants.dart';
 
-class AddAccountScreen extends ConsumerStatefulWidget {
-  final Account? accountToEdit; // If null, create new
+class AddAccountScreen extends ConsumerStatefulWidget { // If null, create new
 
   const AddAccountScreen({super.key, this.accountToEdit});
+  final Account? accountToEdit;
 
   @override
   ConsumerState<AddAccountScreen> createState() => _AddAccountScreenState();
@@ -132,7 +132,7 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
               decoration: const InputDecoration(
                 labelText: 'Initial Balance',
                 border: OutlineInputBorder(),
-                prefixText: '\$ ',
+                prefixText: r'$ ',
               ),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               validator: (val) => double.tryParse(val ?? '') == null ? 'Invalid amount' : null,

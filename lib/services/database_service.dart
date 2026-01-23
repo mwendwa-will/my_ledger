@@ -25,10 +25,22 @@ class DatabaseService {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _createDB,
       onConfigure: _onConfigure,
+      onUpgrade: _upgradeDB,
     );
+  }
+
+  Future<void> _upgradeDB(Database db, int oldVersion, int newVersion) async {
+    // Migration to add `sort_order` column to categories (version 2)
+    if (oldVersion < 2) {
+      try {
+        await db.execute('ALTER TABLE categories ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0');
+      } catch (e) {
+        // If the column already exists or another error occurs, ignore to avoid crashing upgrades
+      }
+    }
   }
 
   Future<void> _onConfigure(Database db) async {
@@ -59,7 +71,8 @@ class DatabaseService {
         color INTEGER NOT NULL,
         icon_code_point INTEGER NOT NULL,
         is_archived INTEGER NOT NULL DEFAULT 0,
-        monthly_budget_limit REAL
+        monthly_budget_limit REAL,
+        sort_order INTEGER NOT NULL DEFAULT 0
       )
     ''');
 
@@ -139,22 +152,30 @@ class DatabaseService {
   }
 
   Future<void> _seedCategories(Database db) async {
-    final defaultCategories = [
-      Category(name: 'Groceries', type: TransactionType.expense, color: 0xFF4CAF50, iconCodePoint: AppConstants.defaultCategoryIcons['Groceries']!),
-      Category(name: 'Rent', type: TransactionType.expense, color: 0xFF2196F3, iconCodePoint: AppConstants.defaultCategoryIcons['Rent']!),
-      Category(name: 'Utilities', type: TransactionType.expense, color: 0xFFFF9800, iconCodePoint: AppConstants.defaultCategoryIcons['Utilities']!),
-      Category(name: 'Dining', type: TransactionType.expense, color: 0xFFE91E63, iconCodePoint: AppConstants.defaultCategoryIcons['Dining']!),
-      Category(name: 'Transportation', type: TransactionType.expense, color: 0xFF9C27B0, iconCodePoint: AppConstants.defaultCategoryIcons['Transportation']!),
-      Category(name: 'Entertainment', type: TransactionType.expense, color: 0xFF673AB7, iconCodePoint: AppConstants.defaultCategoryIcons['Entertainment']!),
-      Category(name: 'Healthcare', type: TransactionType.expense, color: 0xFFF44336, iconCodePoint: AppConstants.defaultCategoryIcons['Healthcare']!),
-      Category(name: 'Shopping', type: TransactionType.expense, color: 0xFF00BCD4, iconCodePoint: AppConstants.defaultCategoryIcons['Shopping']!),
-      Category(name: 'Salary', type: TransactionType.income, color: 0xFF4CAF50, iconCodePoint: AppConstants.defaultCategoryIcons['Salary']!),
-      Category(name: 'Freelance', type: TransactionType.income, color: 0xFF8BC34A, iconCodePoint: AppConstants.defaultCategoryIcons['Freelance']!),
-      Category(name: 'Investments', type: TransactionType.income, color: 0xFF009688, iconCodePoint: AppConstants.defaultCategoryIcons['Investments']!),
+    final List<Map<String, dynamic>> defs = [
+      {'name': 'Groceries', 'type': TransactionType.expense, 'iconKey': 'Groceries'},
+      {'name': 'Rent', 'type': TransactionType.expense, 'iconKey': 'Rent'},
+      {'name': 'Utilities', 'type': TransactionType.expense, 'iconKey': 'Utilities'},
+      {'name': 'Dining', 'type': TransactionType.expense, 'iconKey': 'Dining'},
+      {'name': 'Transportation', 'type': TransactionType.expense, 'iconKey': 'Transportation'},
+      {'name': 'Entertainment', 'type': TransactionType.expense, 'iconKey': 'Entertainment'},
+      {'name': 'Healthcare', 'type': TransactionType.expense, 'iconKey': 'Healthcare'},
+      {'name': 'Shopping', 'type': TransactionType.expense, 'iconKey': 'Shopping'},
+      {'name': 'Salary', 'type': TransactionType.income, 'iconKey': 'Salary'},
+      {'name': 'Freelance', 'type': TransactionType.income, 'iconKey': 'Freelance'},
+      {'name': 'Investments', 'type': TransactionType.income, 'iconKey': 'Investments'},
     ];
 
-    for (var cat in defaultCategories) {
-      await db.insert('categories', cat.toMap());
+    for (int i = 0; i < defs.length; i++) {
+      final def = defs[i];
+      final category = Category(
+        name: def['name'] as String,
+        type: def['type'] as TransactionType,
+        color: AppConstants.defaultCategoryColors[i % AppConstants.defaultCategoryColors.length],
+        iconCodePoint: AppConstants.defaultCategoryIcons[def['iconKey'] as String]!,
+        sortOrder: i,
+      );
+      await db.insert('categories', category.toMap());
     }
   }
 
@@ -202,9 +223,23 @@ class DatabaseService {
     return await db.insert('categories', category.toMap());
   }
 
+  Future<Category?> getCategory(int id) async {
+    final db = await instance.database;
+    final maps = await db.query('categories', where: 'id = ?', whereArgs: [id]);
+    if (maps.isNotEmpty) {
+      return Category.fromMap(maps.first);
+    }
+    return null;
+  }
+
+  Future<int> updateCategory(Category category) async {
+    final db = await instance.database;
+    return await db.update('categories', category.toMap(), where: 'id = ?', whereArgs: [category.id]);
+  }
+
   Future<List<Category>> getAllCategories() async {
     final db = await instance.database;
-    final result = await db.query('categories', orderBy: 'name ASC');
+    final result = await db.query('categories', orderBy: 'sort_order ASC, name ASC');
     return result.map((json) => Category.fromMap(json)).toList();
   }
   
@@ -214,9 +249,54 @@ class DatabaseService {
       'categories', 
       where: 'type = ?', 
       whereArgs: [type.index],
-      orderBy: 'name ASC'
+      orderBy: 'sort_order ASC, name ASC'
     );
     return result.map((json) => Category.fromMap(json)).toList();
+  }
+
+  Future<void> updateCategoryOrder(List<Category> categories) async {
+    final db = await instance.database;
+    await db.transaction((txn) async {
+      for (int i = 0; i < categories.length; i++) {
+        await txn.update(
+          'categories',
+          {'sort_order': i},
+          where: 'id = ?',
+          whereArgs: [categories[i].id],
+        );
+      }
+    });
+  }
+
+  Future<int> deleteCategory(int id, {int? reassignToCategoryId}) async {
+    final db = await instance.database;
+    return await db.transaction((txn) async {
+      // 1. Delete associated budgets
+      await txn.delete('budgets', where: 'category_id = ?', whereArgs: [id]);
+
+      // 2. Handle associated transactions
+      if (reassignToCategoryId != null) {
+        await txn.rawUpdate(
+          'UPDATE transactions SET category_id = ? WHERE category_id = ?',
+          [reassignToCategoryId, id],
+        );
+      } else {
+        // Mark as uncategorized
+        await txn.rawUpdate(
+          'UPDATE transactions SET category_id = NULL WHERE category_id = ?',
+          [id],
+        );
+      }
+
+      // 3. Delete the category itself
+      return await txn.delete('categories', where: 'id = ?', whereArgs: [id]);
+    });
+  }
+
+  Future<int> countTransactionsForCategory(int categoryId) async {
+    final db = await instance.database;
+    final count = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM transactions WHERE category_id = ?', [categoryId]));
+    return count ?? 0;
   }
 
   // --- TRANSACTIONS ---
@@ -411,6 +491,26 @@ class DatabaseService {
       spending[row['category_id'] as int] = (totalVal as num).toDouble();
     }
     return spending;
+  }
+  
+  // New method to get frequent categories
+  Future<List<Category>> getFrequentCategories(TransactionType type, {int limit = 5, int daysAgo = 90}) async {
+    final db = await instance.database;
+    final now = DateTime.now();
+    final dateLimit = now.subtract(Duration(days: daysAgo));
+
+    final result = await db.rawQuery('''
+      SELECT c.id, c.name, c.type, c.color, c.icon_code_point, c.is_archived, c.monthly_budget_limit, c.sort_order,
+             COUNT(t.id) as transaction_count
+      FROM categories c
+      JOIN transactions t ON c.id = t.category_id
+      WHERE t.type = ? AND t.date >= ?
+      GROUP BY c.id, c.name, c.type, c.color, c.icon_code_point, c.is_archived, c.monthly_budget_limit, c.sort_order
+      ORDER BY transaction_count DESC
+      LIMIT ?
+    ''', [type.index, dateLimit.toIso8601String(), limit]);
+
+    return result.map((json) => Category.fromMap(json)).toList();
   }
   
   // Method to close DB

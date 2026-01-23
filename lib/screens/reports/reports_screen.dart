@@ -139,7 +139,7 @@ class ReportsScreen extends ConsumerWidget {
               child: trendDataAsync.when(
                 data: (data) {
                   double maxY = 0;
-                  for (var t in data) {
+                  for (final t in data) {
                     if (t.income > maxY) maxY = t.income;
                     if (t.expense > maxY) maxY = t.expense;
                   }
@@ -157,7 +157,7 @@ class ReportsScreen extends ConsumerWidget {
                             getTitlesWidget: (value, meta) {
                               if (value.toInt() >= 0 && value.toInt() < data.length) {
                                 return Padding(
-                                  padding: const EdgeInsets.only(top: 8.0),
+                                  padding: const EdgeInsets.only(top: 8),
                                   child: Text(
                                     Formatters.formatShortDate(data[value.toInt()].date).split(' ')[0],
                                     style: const TextStyle(fontSize: 10),

@@ -1,20 +1,6 @@
 import 'enums.dart';
 
-class TransactionItem {
-  final int? id;
-  final int accountId;
-  final int? categoryId; // Nullable for transfers
-  final int? toAccountId; // Only for transfers
-  final double amount;
-  final TransactionType type;
-  final DateTime date;
-  final String? note;
-  final String? imagePath; // Local path to receipt image
-  final bool isReconciled;
-  
-  // For transfers: link the two transactions (withdrawal and deposit)
-  // For splits: link to parent transaction
-  final int? relatedTransactionId; 
+class TransactionItem { 
 
   TransactionItem({
     this.id,
@@ -29,6 +15,36 @@ class TransactionItem {
     this.isReconciled = false,
     this.relatedTransactionId,
   });
+
+  factory TransactionItem.fromMap(Map<String, dynamic> map) {
+    return TransactionItem(
+      id: map['id'],
+      accountId: map['account_id'],
+      categoryId: map['category_id'],
+      toAccountId: map['to_account_id'],
+      amount: map['amount'],
+      type: TransactionType.values[map['type']],
+      date: DateTime.parse(map['date']),
+      note: map['note'],
+      imagePath: map['image_path'],
+      isReconciled: map['is_reconciled'] == 1,
+      relatedTransactionId: map['related_transaction_id'],
+    );
+  }
+  final int? id;
+  final int accountId;
+  final int? categoryId; // Nullable for transfers
+  final int? toAccountId; // Only for transfers
+  final double amount;
+  final TransactionType type;
+  final DateTime date;
+  final String? note;
+  final String? imagePath; // Local path to receipt image
+  final bool isReconciled;
+  
+  // For transfers: link the two transactions (withdrawal and deposit)
+  // For splits: link to parent transaction
+  final int? relatedTransactionId;
 
   TransactionItem copyWith({
     int? id,
@@ -72,21 +88,5 @@ class TransactionItem {
       'is_reconciled': isReconciled ? 1 : 0,
       'related_transaction_id': relatedTransactionId,
     };
-  }
-
-  factory TransactionItem.fromMap(Map<String, dynamic> map) {
-    return TransactionItem(
-      id: map['id'],
-      accountId: map['account_id'],
-      categoryId: map['category_id'],
-      toAccountId: map['to_account_id'],
-      amount: map['amount'],
-      type: TransactionType.values[map['type']],
-      date: DateTime.parse(map['date']),
-      note: map['note'],
-      imagePath: map['image_path'],
-      isReconciled: map['is_reconciled'] == 1,
-      relatedTransactionId: map['related_transaction_id'],
-    );
   }
 }

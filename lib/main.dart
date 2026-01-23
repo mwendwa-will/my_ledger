@@ -12,7 +12,7 @@ void main() async {
   
   // Check onboarding status
   final prefs = await SharedPreferences.getInstance();
-  final bool isOnboarded = prefs.getBool('is_onboarded') ?? false;
+  final isOnboarded = prefs.getBool('is_onboarded') ?? false;
 
   runApp(ProviderScope(
     child: MyLedgerApp(isOnboarded: isOnboarded),
@@ -20,9 +20,9 @@ void main() async {
 }
 
 class MyLedgerApp extends ConsumerWidget {
-  final bool isOnboarded;
 
   const MyLedgerApp({super.key, required this.isOnboarded});
+  final bool isOnboarded;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

@@ -21,10 +21,10 @@ class BackupService {
 
   static Future<bool> importDatabase() async {
     // Pick file
-    FilePickerResult? result = await FilePicker.platform.pickFiles();
+    var result = await FilePicker.platform.pickFiles();
 
     if (result != null && result.files.single.path != null) {
-      final File sourceFile = File(result.files.single.path!);
+      final sourceFile = File(result.files.single.path!);
       final dbPath = await getDatabasesPath();
       final path = join(dbPath, AppConstants.dbName);
       

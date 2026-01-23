@@ -1,17 +1,6 @@
 import 'enums.dart';
 
 class RecurringTransaction {
-  final int? id;
-  final int accountId;
-  final int? categoryId;
-  final int? toAccountId; // For recurring transfers
-  final double amount;
-  final TransactionType type;
-  final RecurringFrequency frequency;
-  final DateTime startDate;
-  final DateTime nextDueDate;
-  final String? note;
-  final bool isActive;
 
   RecurringTransaction({
     this.id,
@@ -27,22 +16,6 @@ class RecurringTransaction {
     this.isActive = true,
   });
 
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'account_id': accountId,
-      'category_id': categoryId,
-      'to_account_id': toAccountId,
-      'amount': amount,
-      'type': type.index,
-      'frequency': frequency.index,
-      'start_date': startDate.toIso8601String(),
-      'next_due_date': nextDueDate.toIso8601String(),
-      'note': note,
-      'is_active': isActive ? 1 : 0,
-    };
-  }
-
   factory RecurringTransaction.fromMap(Map<String, dynamic> map) {
     return RecurringTransaction(
       id: map['id'],
@@ -57,6 +30,33 @@ class RecurringTransaction {
       note: map['note'],
       isActive: map['is_active'] == 1,
     );
+  }
+  final int? id;
+  final int accountId;
+  final int? categoryId;
+  final int? toAccountId; // For recurring transfers
+  final double amount;
+  final TransactionType type;
+  final RecurringFrequency frequency;
+  final DateTime startDate;
+  final DateTime nextDueDate;
+  final String? note;
+  final bool isActive;
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'account_id': accountId,
+      'category_id': categoryId,
+      'to_account_id': toAccountId,
+      'amount': amount,
+      'type': type.index,
+      'frequency': frequency.index,
+      'start_date': startDate.toIso8601String(),
+      'next_due_date': nextDueDate.toIso8601String(),
+      'note': note,
+      'is_active': isActive ? 1 : 0,
+    };
   }
   
   String get frequencyDescription {
