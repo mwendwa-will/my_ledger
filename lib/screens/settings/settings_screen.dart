@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_auth/local_auth.dart';
-import 'package:flutter/services.dart';
+import 'package:path/path.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sqflite/sqflite.dart';
+
 import '../../providers/settings_provider.dart';
-import 'categories/categories_screen.dart';
 import '../../services/backup_service.dart';
 import '../../utils/constants.dart';
-import 'package:sqflite/sqflite.dart';
-import 'package:path/path.dart';
+import 'categories/categories_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -37,7 +38,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Future<void> _toggleBiometric(BuildContext context, bool value) async {
     if (value) {
       final resultMessage = await _enableBiometricFlow();
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       if (resultMessage != null) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(resultMessage)));
       } else {
@@ -46,7 +49,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     } else {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('biometric_enabled', false);
-      if (mounted) setState(() => _isBiometricEnabled = false);
+      if (mounted) {
+        setState(() => _isBiometricEnabled = false);
+      }
     }
   }
 
@@ -59,10 +64,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         return 'Biometrics not available on this device';
       }
 
-      final authenticated = await auth.authenticate(
-        localizedReason: 'Authenticate to enable biometric lock',
-        options: const AuthenticationOptions(stickyAuth: true),
-      );
+    final authenticated = await auth.authenticate(
+  localizedReason: 'Authenticate to enable biometric lock',
+  // Use the parameter name from the definition (stickyAuth is called persistAcrossBackgrounding here)
+  persistAcrossBackgrounding: true, 
+  biometricOnly: false,
+);
 
       if (authenticated) {
         await prefs.setBool('biometric_enabled', true);

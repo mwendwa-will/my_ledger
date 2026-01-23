@@ -1,10 +1,12 @@
+import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
+
 import '../models/budget.dart';
 import '../models/category.dart';
 import '../models/enums.dart';
 import '../services/database_service.dart';
 import 'category_provider.dart';
-import 'package:collection/collection.dart';
 
 class BudgetView { // New
   

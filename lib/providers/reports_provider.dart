@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 import '../services/database_service.dart';
 import '../models/category.dart';
 import 'category_provider.dart';
