@@ -16,7 +16,7 @@ void main() async {
 
   runApp(ProviderScope(
     child: MyLedgerApp(isOnboarded: isOnboarded),
-  ));
+  ),);
 }
 
 class MyLedgerApp extends ConsumerWidget {

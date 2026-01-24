@@ -35,7 +35,7 @@ class ReportsScreen extends ConsumerWidget {
                 ),
                 Text(
                   'Expenses: ${Formatters.formatDate(date).split(',')[0].replaceFirst(' ', ', ')}',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, fontSize: 16),
                 ),
                 IconButton(
                   icon: const Icon(Icons.chevron_right),
@@ -75,7 +75,7 @@ class ReportsScreen extends ConsumerWidget {
                                 value: item.amount,
                                 title: '${item.percentage.toStringAsFixed(0)}%',
                                 radius: 50,
-                                titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                                titleStyle: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.onPrimary),
                               );
                             }).toList(),
                           ),
@@ -124,7 +124,7 @@ class ReportsScreen extends ConsumerWidget {
             ),
             
             const SizedBox(height: 32),
-            const Text('Income vs Expense (Last 6 Months)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text('Income vs Expense (Last 6 Months)', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             
             // Bar Chart
@@ -180,13 +180,13 @@ class ReportsScreen extends ConsumerWidget {
                           barRods: [
                             BarChartRodData(
                               toY: e.value.income,
-                              color: AppColors.income,
+                              color: Theme.of(context).colorScheme.secondary,
                               width: 12,
                               borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
                             ),
                             BarChartRodData(
                               toY: e.value.expense,
-                              color: AppColors.expense,
+                              color: Theme.of(context).colorScheme.error,
                               width: 12,
                               borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
                             ),

@@ -1,3 +1,83 @@
+# MyLedger — Offline Budgeting App
+
+MyLedger is an offline-first personal finance app built with Flutter. It stores all data locally using SQLite and focuses on privacy, fast performance, and an approachable UI for tracking accounts, transactions, budgets, and reports.
+
+## Key Features
+
+- Offline-first storage with local SQLite database
+- Account management (checking, savings, credit cards, cash, etc.)
+- Transactions: income, expenses, transfers; categories, notes, and dates
+- Budgets per category with monthly tracking
+- Search, filter and simple reports (charts)
+- Calculator-style input for amounts (supports simple expressions)
+- Dark mode (Material 3)
+- Backup & restore database file
+- Optional biometric lock via system biometrics
+
+## Getting Started (Developer)
+
+Prerequisites
+
+- Flutter SDK (recommended 3.10+)
+- A device or emulator (Android / iOS) and platform tooling (Android Studio / Xcode)
+
+Clone and install
+
+```bash
+git clone https://github.com/yourusername/my_ledger.git
+cd my_ledger
+flutter pub get
+```
+
+Run the app
+
+```bash
+flutter run
+```
+
+Useful dev commands
+
+```bash
+flutter analyze        # static analysis
+flutter test           # run tests (if any)
+flutter clean          # clear build outputs
+flutter pub get        # fetch packages
+```
+
+## Database & Migration Notes
+
+The app uses `sqflite` and manages schema migrations in `lib/services/database_service.dart`.
+
+- Migration: In a recent update the database schema was bumped to version `2` to add a `sort_order` column to the `categories` table. On application upgrade the migration code will attempt to alter the table to add the new column with a default of `0`. The migration is written to be safe for existing databases but if you encounter issues you can remove the app data (or delete the `my_ledger.db` file) to recreate the schema.
+- Backup: Use the in-app export / import features to move data between devices. When restoring, ensure the DB file matches the expected schema version.
+
+## Troubleshooting
+
+- "no such column: sort_order" — This indicates an older database without the new column. The app includes an on-upgrade step to add this column; if the upgrade fails, delete or replace the database file to recreate it, or restore from a backed-up `.db` file that includes the column.
+- "Database locked" — Close other app instances or processes that may access the DB; restart the app.
+- Biometrics not available — Ensure platform biometric security is configured on the device.
+
+## Contributing
+
+Contributions are welcome. When submitting changes:
+
+- Run `flutter analyze` and ensure there are no analyzer errors.
+- Keep changes focused and include tests where appropriate.
+
+## Developer Tips
+
+- Providers: The app uses Riverpod for state management (see `lib/providers`).
+- Database: `lib/services/database_service.dart` centralizes all DB operations and migrations.
+- Models: Data models are in `lib/models` and include `toMap()` / `fromMap()` helpers used for persistence.
+
+## License
+
+This project is licensed under the MIT License.
+
+---
+
+If you want any additional sections (screenshots, CI, or development workflows), tell me what you'd like included and I will update the README.
+
 # MyLedger - Offline Budgeting App
 
 MyLedger is a comprehensive, offline-first personal finance application

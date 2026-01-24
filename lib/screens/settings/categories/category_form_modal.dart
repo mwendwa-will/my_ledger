@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../models/category.dart';
 import '../../../models/enums.dart';
 import '../../../utils/constants.dart'; // Import AppConstants
+import '../../../utils/icon_helper.dart';
 
 class CategoryFormModal extends StatefulWidget {
 
@@ -32,7 +33,7 @@ class _CategoryFormModalState extends State<CategoryFormModal> {
     _nameController = TextEditingController(text: widget.category?.name ?? '');
     _selectedType = widget.category?.type ?? TransactionType.expense;
     _selectedColor = widget.category != null ? Color(widget.category!.color) : Color(AppConstants.defaultCategoryColors[0]);
-    _selectedIcon = widget.category != null ? IconData(widget.category!.iconCodePoint, fontFamily: 'MaterialIcons') : Icons.category;
+    _selectedIcon = widget.category != null ? getIconFromCodePoint(widget.category!.iconCodePoint) : Icons.category;
     _includeInBudgets = widget.category?.monthlyBudgetLimit != null;
     _budgetAmountController = TextEditingController(text: widget.category?.monthlyBudgetLimit?.toString() ?? '');
   }
@@ -68,8 +69,9 @@ class _CategoryFormModalState extends State<CategoryFormModal> {
               TextFormField(
                 controller: _nameController,
                 maxLength: 30,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Category Name',
+                  hintText: 'e.g., Groceries',
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
@@ -85,28 +87,33 @@ class _CategoryFormModalState extends State<CategoryFormModal> {
               ),
               const SizedBox(height: 20),
               Text('Type', style: Theme.of(context).textTheme.titleMedium),
-              Row(
-                children: TransactionType.values.map((type) {
-                  return Expanded(
-                    child: RadioListTile<TransactionType>(
-                      title: Text(type.toString().split('.').last.capitalize()),
-                      value: type,
-                      groupValue: _selectedType,
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedType = value!;
-                        });
-                      },
-                    ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<TransactionType>(
+                initialValue: _selectedType,
+                decoration: InputDecoration(
+                  labelText: 'Type',
+                  border: OutlineInputBorder(),
+                ),
+                items: TransactionType.values.map((type) {
+                  return DropdownMenuItem<TransactionType>(
+                    value: type,
+                    child: Text(type.toString().split('.').last.capitalize()),
                   );
                 }).toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() {
+                      _selectedType = value;
+                    });
+                  }
+                },
               ),
               const SizedBox(height: 20),
               Text('Icon', style: Theme.of(context).textTheme.titleMedium),
               // Icon selection preview
               ListTile(
                 leading: Icon(_selectedIcon, color: _selectedColor),
-                title: const Text('Change Icon'),
+                title: Text('Change Icon'),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () async {
                   final newIcon = await _showIconPicker(context, _selectedIcon);
@@ -145,7 +152,7 @@ class _CategoryFormModalState extends State<CategoryFormModal> {
                           ),
                         ),
                         child: _selectedColor == color
-                            ? const Icon(Icons.check, color: Colors.white, size: 18)
+                            ? Icon(Icons.check, color: Theme.of(context).colorScheme.onPrimary, size: 18)
                             : null,
                       ),
                     );
@@ -169,8 +176,9 @@ class _CategoryFormModalState extends State<CategoryFormModal> {
                     controller: _budgetAmountController,
                     keyboardType:
                         const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Monthly Budget Amount',
+                      hintText: 'Optional budget limit',
                       border: OutlineInputBorder(),
                       prefixText: r'$', // Placeholder currency symbol
                     ),
@@ -191,7 +199,7 @@ class _CategoryFormModalState extends State<CategoryFormModal> {
                         id: widget.category?.id,
                         name: _nameController.text.trim(),
                         type: _selectedType,
-                        color: _selectedColor.value,
+                        color: _selectedColor.toARGB32(),
                         iconCodePoint: _selectedIcon.codePoint,
                         monthlyBudgetLimit: _includeInBudgets ? double.parse(_budgetAmountController.text) : null,
                       );
@@ -210,8 +218,7 @@ class _CategoryFormModalState extends State<CategoryFormModal> {
   }
 
   Future<IconData?> _showIconPicker(BuildContext context, IconData currentIcon) async {
-    // TODO: Implement a proper icon picker with search and sections
-    // For now, return a fixed icon
+    // Simple icon picker — grid with selection.
     return showDialog<IconData>(
       context: context,
       builder: (context) => AlertDialog(
@@ -231,9 +238,9 @@ class _CategoryFormModalState extends State<CategoryFormModal> {
               final icon = _predefinedIcons[index];
               return GestureDetector(
                 onTap: () => Navigator.of(context).pop(icon),
-                child: Container(
+                child: DecoratedBox(
                   decoration: BoxDecoration(
-                    color: currentIcon == icon ? Theme.of(context).colorScheme.primary.withOpacity(0.2) : Colors.transparent,
+                    color: currentIcon == icon ? Theme.of(context).colorScheme.primary.withAlpha((0.2 * 255).round()) : Colors.transparent,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(icon, size: 30),

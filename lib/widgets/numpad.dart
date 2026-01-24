@@ -54,6 +54,15 @@ class Numpad extends StatelessWidget {
             _buildButton(context, '${currencySymbol}50', onPressed: () => onKeyPressed('50'), tooltip: 'Quick add 50 $currencySymbol'),
           ],
         ),
+        // Operator row
+        Row(
+          children: [
+            _buildButton(context, '+', onPressed: () => onKeyPressed('+'), isAccent: true, tooltip: 'plus'),
+            _buildButton(context, '-', onPressed: () => onKeyPressed('-'), isAccent: true, tooltip: 'minus'),
+            _buildButton(context, '*', onPressed: () => onKeyPressed('*'), isAccent: true, tooltip: 'multiply'),
+            _buildButton(context, '/', onPressed: () => onKeyPressed('/'), isAccent: true, tooltip: 'divide'),
+          ],
+        ),
         // Numpad buttons
         Row(
           children: [
@@ -78,14 +87,21 @@ class Numpad extends StatelessWidget {
         ),
         Row(
           children: [
-            _buildButton(context, '.', tooltip: 'decimal point'),
-            _buildButton(context, '0', tooltip: 'digit 0'),
+            _buildButton(context, '(', onPressed: () => onKeyPressed('('), tooltip: 'open parenthesis'),
+            _buildButton(context, ')', onPressed: () => onKeyPressed(')'), tooltip: 'close parenthesis'),
             _buildButton(
               context,
               '<-',
               onPressed: () => onKeyPressed('backspace'),
               tooltip: 'backspace',
             ),
+          ],
+        ),
+        Row(
+          children: [
+            _buildButton(context, '.', tooltip: 'decimal point'),
+            _buildButton(context, '0', tooltip: 'digit 0'),
+            _buildButton(context, 'C', onPressed: () => onKeyPressed('clear'), tooltip: 'clear'),
           ],
         ),
       ],

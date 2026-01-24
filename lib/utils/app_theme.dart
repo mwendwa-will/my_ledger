@@ -29,31 +29,78 @@ class AppTheme {
         onSurface: AppColors.onSurface,
       ),
       textTheme: GoogleFonts.interTextTheme().copyWith(
-        displayLarge: GoogleFonts.inter(fontSize: 57, fontWeight: FontWeight.w400, color: AppColors.onSurface),
-        headlineMedium: GoogleFonts.inter(fontSize: 28, fontWeight: FontWeight.w400, color: AppColors.onSurface),
-        titleLarge: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w400, color: AppColors.onSurface),
-        bodyLarge: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w400, color: AppColors.onSurface),
-        bodyMedium: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w400, color: AppColors.onSurface),
-        labelLarge: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.onSurface),
+        displayLarge: GoogleFonts.inter(
+          fontSize: 57,
+          fontWeight: FontWeight.w400,
+          color: AppColors.onSurface,
+        ),
+        headlineMedium: GoogleFonts.inter(
+          fontSize: 28,
+          fontWeight: FontWeight.w400,
+          color: AppColors.onSurface,
+        ),
+        titleLarge: GoogleFonts.inter(
+          fontSize: 22,
+          fontWeight: FontWeight.w400,
+          color: AppColors.onSurface,
+        ),
+        bodyLarge: GoogleFonts.inter(
+          fontSize: 16,
+          fontWeight: FontWeight.w400,
+          color: AppColors.onSurface,
+        ),
+        bodyMedium: GoogleFonts.inter(
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+          color: AppColors.onSurface,
+        ),
+        labelLarge: GoogleFonts.inter(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          color: AppColors.onSurface,
+        ),
       ),
       appBarTheme: const AppBarTheme(
         centerTitle: true,
         backgroundColor: AppColors.background,
         elevation: 0,
       ),
-      cardTheme: CardThemeData( // Use Card instead of CardThemeData
+      cardTheme: CardThemeData(
+        // Use Card instead of CardThemeData
         elevation: 0,
         shape: RoundedRectangleBorder(
           side: BorderSide(color: Colors.grey.shade200),
           borderRadius: BorderRadius.circular(AppConstants.cardRadius),
         ),
-        color: Colors.white,
+        color: AppColors.surface,
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        // Slightly muted surface for inputs to provide contrast with background
+        fillColor: AppColors.surface.withAlpha(235),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall),
+          borderSide: BorderSide(color: AppColors.onSurface.withAlpha(30)),
+        ),
+        floatingLabelStyle:
+            TextStyle(fontWeight: FontWeight.w600, color: AppColors.primary),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(foregroundColor: AppColors.primary),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall), // Use constant
+            borderRadius: BorderRadius.circular(
+              AppConstants.borderRadiusSmall,
+            ), // Use constant
           ),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         ),
@@ -62,7 +109,11 @@ class AppTheme {
         backgroundColor: AppColors.primary,
         foregroundColor: AppColors.onPrimary,
         elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium)), // Use constant
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(
+            AppConstants.borderRadiusMedium,
+          ),
+        ), // Use constant
       ),
     );
   }
@@ -74,15 +125,21 @@ class AppTheme {
         seedColor: AppColors.primary,
         brightness: Brightness.dark,
       ),
-      textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme).copyWith(
-        displayLarge: GoogleFonts.inter(fontSize: 57, fontWeight: FontWeight.w400, color: AppColors.onSurface),
-        headlineMedium: GoogleFonts.inter(fontSize: 28, fontWeight: FontWeight.w400, color: AppColors.onSurface),
-        titleLarge: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w400, color: AppColors.onSurface),
-        bodyLarge: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w400, color: AppColors.onSurface),
-        bodyMedium: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w400, color: AppColors.onSurface),
-        labelLarge: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.onSurface),
+      textTheme:
+          GoogleFonts.interTextTheme(ThemeData.dark().textTheme).copyWith(
+        displayLarge:
+            GoogleFonts.inter(fontSize: 57, fontWeight: FontWeight.w400),
+        headlineMedium:
+            GoogleFonts.inter(fontSize: 28, fontWeight: FontWeight.w400),
+        titleLarge:
+            GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w400),
+        bodyLarge: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w400),
+        bodyMedium:
+            GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w400),
+        labelLarge:
+            GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500),
       ),
-      cardTheme: CardThemeData( // Use Card instead of CardThemeData
+      cardTheme: CardThemeData(
         elevation: 0,
         shape: RoundedRectangleBorder(
           side: const BorderSide(color: Colors.white10),
@@ -97,7 +154,11 @@ class AppTheme {
         backgroundColor: AppColors.primaryContainer,
         foregroundColor: AppColors.onPrimaryContainer,
         elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.borderRadiusMedium)), // Use constant
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(
+            AppConstants.borderRadiusMedium,
+          ),
+        ), // Use constant
       ),
     );
   }

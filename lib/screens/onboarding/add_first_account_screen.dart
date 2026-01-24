@@ -148,10 +148,10 @@ class _AddFirstAccountScreenState extends State<AddFirstAccountScreen> {
                   trailing: Text(
                     '\$${(double.tryParse(_balanceController.text) ?? 0.00).toStringAsFixed(2)}',
                     style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold),
+                        fontSize: 16, fontWeight: FontWeight.bold,),
                   ),
                 ),
-              )
+              ),
             ],
           ),
         ),

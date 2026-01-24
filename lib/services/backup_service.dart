@@ -16,12 +16,16 @@ class BackupService {
     }
 
     // Share the file
-    await Share.shareXFiles([XFile(path)], text: 'MyLedger Database Backup');
-  }
+await SharePlus.instance.share(
+  ShareParams(
+    files: [XFile(path)], 
+    text: 'MyLedger Database Backup',
+  ),
+);  }
 
   static Future<bool> importDatabase() async {
     // Pick file
-    var result = await FilePicker.platform.pickFiles();
+    final result = await FilePicker.platform.pickFiles();
 
     if (result != null && result.files.single.path != null) {
       final sourceFile = File(result.files.single.path!);

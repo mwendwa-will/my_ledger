@@ -12,7 +12,9 @@ import '../../providers/category_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/transaction_provider.dart';
 import '../../utils/constants.dart';
+import '../../utils/icon_helper.dart';
 import '../../utils/formatters.dart';
+import 'add_transaction_screen.dart';
 
 class TransactionsScreen extends ConsumerStatefulWidget {
   const TransactionsScreen({super.key});
@@ -25,7 +27,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   final TextEditingController _searchController = TextEditingController();
   bool _isSearching = false;
   bool _isInSelectionMode = false; // New state for selection mode
-  Set<int> _selectedTransactionIds = {}; // New state for selected transactions
+  final Set<int> _selectedTransactionIds = {}; // New state for selected transactions
 
   @override
   void dispose() {
@@ -62,7 +64,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         content: Text('Are you sure you want to delete $count selected transactions?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text('Delete', style: TextStyle(color: Theme.of(context).colorScheme.error))),
         ],
       ),
     ) ?? false;
@@ -93,7 +95,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       ref.read(transactionFilterProvider.notifier).update((state) => state.copyWith(
         startDate: picked.start,
         endDate: picked.end,
-      ));
+      ),);
     }
   }
 
@@ -145,7 +147,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           
           // Group transactions by date
           final Map<DateTime, List<TransactionItem>> groupedTransactions = {};
-          for (var tx in transactions) {
+          for (final tx in transactions) {
             final date = DateTime(tx.date.year, tx.date.month, tx.date.day);
             if (!groupedTransactions.containsKey(date)) {
               groupedTransactions[date] = [];
@@ -190,7 +192,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                     ),
                   ],
                 );
-              }).toList(),
+              }),
             ],
           );
         },
@@ -209,7 +211,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     String currency,
   ) {
     final isExpense = tx.type == TransactionType.expense;
-    final color = isExpense ? AppColors.expense : (tx.type == TransactionType.income ? AppColors.income : AppColors.transfer);
+    final color = isExpense ? Theme.of(context).colorScheme.error : (tx.type == TransactionType.income ? Theme.of(context).colorScheme.secondary : Theme.of(context).colorScheme.tertiary);
     final isSelected = _selectedTransactionIds.contains(tx.id);
 
     return GestureDetector(
@@ -238,10 +240,10 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         key: Key('tx_${tx.id}'),
         direction: DismissDirection.endToStart,
         background: Container(
-          color: AppColors.error,
+          color: Theme.of(context).colorScheme.error,
           alignment: Alignment.centerRight,
           padding: const EdgeInsets.only(right: 20),
-          child: const Icon(Icons.delete, color: Colors.white),
+          child: Icon(Icons.delete, color: Theme.of(context).colorScheme.onError),
         ),
         confirmDismiss: (_) async {
           return await showDialog(
@@ -251,7 +253,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               content: Text('Delete this ${Formatters.formatCurrency(tx.amount, symbol: currency)} transaction?'),
               actions: [
                 TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-                TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
+                TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text('Delete', style: TextStyle(color: Theme.of(context).colorScheme.error))),
               ],
             ),
           );
@@ -273,12 +275,12 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
              ),
            );
         },
-        child: Container(
+        child: DecoratedBox(
           decoration: BoxDecoration(
-            color: isSelected ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3) : Theme.of(context).cardColor, // Highlight selected
+            color: isSelected ? Theme.of(context).colorScheme.primaryContainer.withAlpha((0.3 * 255).round()) : Theme.of(context).cardColor, // Highlight selected
             border: Border(
               left: BorderSide(
-                color: category != null ? Color(category.color) : _getColor(tx.type),
+                color: category != null ? Color(category.color) : _getColor(context, tx.type),
                 width: 5,
               ),
             ),
@@ -304,8 +306,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                   : CircleAvatar(
                       backgroundColor: color.withAlpha(26),
                       child: Icon(
-                        category != null ? IconData(category.iconCodePoint, fontFamily: 'MaterialIcons') : _getIcon(tx.type),
-                        color: category != null ? Color(category.color) : _getColor(tx.type),
+                        category != null ? getIconFromCodePoint(category.iconCodePoint) : _getIcon(tx.type),
+                        color: category != null ? Color(category.color) : _getColor(context, tx.type),
                         size: 20,
                       ),
                     ),
@@ -323,7 +325,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               trailing: Text(
                 '${tx.type == TransactionType.expense || tx.type == TransactionType.transfer ? "-" : "+"}${Formatters.formatCurrency(tx.amount, symbol: currency)}',
                 style: TextStyle(
-                  color: _getColor(tx.type),
+                  color: _getColor(context, tx.type),
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -347,9 +349,17 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton.icon(
-                          onPressed: () {
-                            // TODO: Implement edit transaction functionality
-                            print('Edit transaction ${tx.id}');
+                          onPressed: () async {
+                            // Open edit screen prefilled
+                            final navigator = Navigator.of(context);
+                            await navigator.push(
+                              MaterialPageRoute(
+                                builder: (_) => AddTransactionScreen(transaction: tx),
+                                fullscreenDialog: true,
+                              ),
+                            );
+                            // After edit, refresh transactions
+                            ref.invalidate(transactionsProvider);
                           },
                           icon: const Icon(Icons.edit),
                           label: const Text('Edit Transaction'),
@@ -366,15 +376,16 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     );
   }
 
-  bool _isSameDay(DateTime a, DateTime b) {
-    return a.year == b.year && a.month == b.month && a.day == b.day;
-  }
+  // Removed unused helper `_isSameDay` to satisfy analyzer (was not referenced)
 
-  Color _getColor(TransactionType type) {
+  Color _getColor(BuildContext context, TransactionType type) {
     switch (type) {
-      case TransactionType.income: return AppColors.income;
-      case TransactionType.expense: return AppColors.expense;
-      case TransactionType.transfer: return AppColors.transfer;
+      case TransactionType.income:
+        return Theme.of(context).colorScheme.secondary;
+      case TransactionType.expense:
+        return Theme.of(context).colorScheme.error;
+      case TransactionType.transfer:
+        return Theme.of(context).colorScheme.tertiary;
     }
   }
 
@@ -387,11 +398,11 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   }
 }
 
-class _SliverDateHeaderDelegate extends SliverPersistentHeaderDelegate {
-  final DateTime date;
-  final BuildContext context; // Pass context to access theme
+class _SliverDateHeaderDelegate extends SliverPersistentHeaderDelegate { // Pass context to access theme
 
   const _SliverDateHeaderDelegate({required this.date, required this.context});
+  final DateTime date;
+  final BuildContext context;
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {

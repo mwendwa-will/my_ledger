@@ -12,6 +12,7 @@ import 'package:my_ledger/screens/onboarding/currency_selection_screen.dart';
 import 'package:my_ledger/screens/onboarding/quick_categories_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dots_indicator/dots_indicator.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../main_screen.dart';
 
@@ -45,8 +46,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     });
   }
 
-  void _showSuccessAnimation() async {
-    await SemanticsService.announce('Setup Complete!', TextDirection.ltr); // Announce completion
+  Future<void> _showSuccessAnimation() async {
+    await SemanticsService.sendAnnouncement(WidgetsBinding.instance.platformDispatcher.views.first, 'Setup Complete!', TextDirection.ltr); // Announce completion
     setState(() {
       _showSuccessOverlay = true;
     });
@@ -56,8 +57,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     });
   }
 
-  void _completeOnboarding() async {
-    HapticFeedback.lightImpact(); // Haptic feedback on completion
+  Future<void> _completeOnboarding() async {
+    await HapticFeedback.lightImpact(); // Haptic feedback on completion
 
     // Save currency
     await ref.read(currencyCodeProvider.notifier).setCurrencyCode(_selectedCurrencyCode);
@@ -68,17 +69,17 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       type: _accountType,
       initialBalance: _startingBalance,
       currentBalance: _startingBalance,
-      color: Colors.blue.value, // Default color for now
+      color: Colors.blue.toARGB32(), // Default color for now
       iconCodePoint: _accountType == AccountType.checking ? Icons.account_balance.codePoint : Icons.savings.codePoint, // Default icon for now
     );
     await DatabaseService.instance.createAccount(newAccount);
 
     // Save categories
-    for (var catData in _selectedCategories) {
+    for (final catData in _selectedCategories) {
       final category = Category(
         name: catData['name'],
         type: catData['type'],
-        color: (catData['color'] as Color).value,
+        color: (catData['color'] as Color).toARGB32(),
         iconCodePoint: (catData['icon'] as IconData).codePoint,
       );
       await DatabaseService.instance.createCategory(category);
@@ -89,9 +90,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     await prefs.setBool('is_onboarded', true);
 
     if (mounted) {
-      _showSuccessAnimation(); // Show animation before navigating
+      await _showSuccessAnimation(); // Show animation before navigating
       if (mounted) {
-        Navigator.of(context).pushReplacement(
+        await Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const MainScreen()),
         );
       }
@@ -139,26 +140,38 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       ),
                       CurrencySelectionScreen(
                         onCurrencySelected: (code) {
-                          setState(() {
-                            _selectedCurrencyCode = code;
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (!mounted) return;
+                            setState(() {
+                              _selectedCurrencyCode = code;
+                            });
                           });
                         },
                         initialCurrencyCode: _selectedCurrencyCode,
                       ),
                       AddFirstAccountScreen(
                         onAccountNameChanged: (name) {
-                          setState(() {
-                            _accountName = name;
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (!mounted) return;
+                            setState(() {
+                              _accountName = name;
+                            });
                           });
                         },
                         onAccountTypeChanged: (type) {
-                          setState(() {
-                            _accountType = type;
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (!mounted) return;
+                            setState(() {
+                              _accountType = type;
+                            });
                           });
                         },
                         onStartingBalanceChanged: (balance) {
-                          setState(() {
-                            _startingBalance = balance;
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (!mounted) return;
+                            setState(() {
+                              _startingBalance = balance;
+                            });
                           });
                         },
                         initialAccountName: _accountName,
@@ -167,8 +180,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       ),
                       QuickCategoriesScreen(
                         onCategoriesSelected: (categories) {
-                          setState(() {
-                            _selectedCategories = categories;
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (!mounted) return;
+                            setState(() {
+                              _selectedCategories = categories;
+                            });
                           });
                         },
                       ),
@@ -186,7 +202,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       size: const Size.square(9.0),
                       activeSize: const Size(18.0, 9.0),
                       activeShape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(5.0)),
+                          borderRadius: BorderRadius.circular(5.0),),
                     ),
                   ),
                 ),
@@ -228,7 +244,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         if (_showSuccessOverlay)
           Positioned.fill(
             child: Container(
-              color: Theme.of(context).colorScheme.surface.withOpacity(0.9),
+              color: Theme.of(context).colorScheme.surface.withAlpha((0.9 * 255).round()),
               child: Center(
                 child: AnimatedOpacity(
                   opacity: _showSuccessOverlay ? 1.0 : 0.0,
@@ -257,12 +273,38 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       ],
     );
   }
+
+}
+
+Widget _buildOnboardingGraphic(BuildContext context, String image) {
+  final color = Theme.of(context).colorScheme.primary;
+  IconData icon;
+  final key = image.toLowerCase();
+  if (key.contains('welcome')) {
+    icon = FontAwesomeIcons.wallet;
+  } else if (key.contains('track')) {
+    icon = FontAwesomeIcons.chartLine;
+  } else if (key.contains('budget')) {
+    icon = FontAwesomeIcons.piggyBank;
+  } else if (key.contains('privacy')) {
+    icon = FontAwesomeIcons.userShield;
+  } else {
+    icon = FontAwesomeIcons.image;
+  }
+
+  return SizedBox(
+    height: 250,
+    child: Center(
+      child: FaIcon(
+        icon,
+        size: 120,
+        color: color,
+      ),
+    ),
+  );
 }
 
 class OnboardingPage extends StatelessWidget {
-  final String image;
-  final String title;
-  final String description;
 
   const OnboardingPage({
     super.key,
@@ -270,6 +312,9 @@ class OnboardingPage extends StatelessWidget {
     required this.title,
     required this.description,
   });
+  final String image;
+  final String title;
+  final String description;
 
   @override
   Widget build(BuildContext context) {
@@ -280,8 +325,8 @@ class OnboardingPage extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // FlutterLogo(size: 150), // Placeholder for image
-            Image.asset(image, height: 250),
+            // Use FontAwesome icons as temporary placeholders instead of image files
+            _buildOnboardingGraphic(context, image),
             const SizedBox(height: 40),
             Text(
               title,

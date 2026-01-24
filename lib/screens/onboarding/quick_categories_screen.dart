@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/enums.dart';
+import '../../utils/constants.dart';
 
 class QuickCategoriesScreen extends StatefulWidget {
 
@@ -16,20 +17,20 @@ class QuickCategoriesScreen extends StatefulWidget {
 class _QuickCategoriesScreenState extends State<QuickCategoriesScreen> {
   // Define default categories with their icons, colors, and type
   final List<Map<String, dynamic>> _defaultCategories = [
-    // Expense Categories
-    {'name': 'Groceries', 'icon': Icons.shopping_cart, 'color': Colors.green, 'type': TransactionType.expense},
-    {'name': 'Dining', 'icon': Icons.restaurant, 'color': Colors.orange, 'type': TransactionType.expense},
-    {'name': 'Transport', 'icon': Icons.directions_car, 'color': Colors.blue, 'type': TransactionType.expense},
-    {'name': 'Bills', 'icon': Icons.receipt, 'color': Colors.purple, 'type': TransactionType.expense},
-    {'name': 'Shopping', 'icon': Icons.shopping_bag, 'color': Colors.pink, 'type': TransactionType.expense},
-    {'name': 'Entertainment', 'icon': Icons.movie, 'color': Colors.deepPurple, 'type': TransactionType.expense},
-    {'name': 'Health', 'icon': Icons.favorite, 'color': Colors.red, 'type': TransactionType.expense},
-    {'name': 'Other Expenses', 'icon': Icons.more_horiz, 'color': Colors.grey, 'type': TransactionType.expense},
+    // Expense Categories (use AppConstants.defaultCategoryColors indices)
+    {'name': 'Groceries', 'icon': Icons.shopping_cart, 'color': Color(AppConstants.defaultCategoryColors[9]), 'type': TransactionType.expense},
+    {'name': 'Dining', 'icon': Icons.restaurant, 'color': Color(AppConstants.defaultCategoryColors[14]), 'type': TransactionType.expense},
+    {'name': 'Transport', 'icon': Icons.directions_car, 'color': Color(AppConstants.defaultCategoryColors[5]), 'type': TransactionType.expense},
+    {'name': 'Bills', 'icon': Icons.receipt, 'color': Color(AppConstants.defaultCategoryColors[2]), 'type': TransactionType.expense},
+    {'name': 'Shopping', 'icon': Icons.shopping_bag, 'color': Color(AppConstants.defaultCategoryColors[15]), 'type': TransactionType.expense},
+    {'name': 'Entertainment', 'icon': Icons.movie, 'color': Color(AppConstants.defaultCategoryColors[3]), 'type': TransactionType.expense},
+    {'name': 'Health', 'icon': Icons.favorite, 'color': Color(AppConstants.defaultCategoryColors[0]), 'type': TransactionType.expense},
+    {'name': 'Other Expenses', 'icon': Icons.more_horiz, 'color': Color(AppConstants.defaultCategoryColors[17]), 'type': TransactionType.expense},
     // Income Categories
-    {'name': 'Salary', 'icon': Icons.attach_money, 'color': Colors.teal, 'type': TransactionType.income},
-    {'name': 'Freelance', 'icon': Icons.work, 'color': Colors.indigo, 'type': TransactionType.income},
-    {'name': 'Investments', 'icon': Icons.trending_up, 'color': Colors.lightGreen, 'type': TransactionType.income},
-    {'name': 'Other Income', 'icon': Icons.add, 'color': Colors.blueGrey, 'type': TransactionType.income},
+    {'name': 'Salary', 'icon': Icons.attach_money, 'color': Color(AppConstants.defaultCategoryColors[10]), 'type': TransactionType.income},
+    {'name': 'Freelance', 'icon': Icons.work, 'color': Color(AppConstants.defaultCategoryColors[4]), 'type': TransactionType.income},
+    {'name': 'Investments', 'icon': Icons.trending_up, 'color': Color(AppConstants.defaultCategoryColors[11]), 'type': TransactionType.income},
+    {'name': 'Other Income', 'icon': Icons.add, 'color': Color(AppConstants.defaultCategoryColors[18]), 'type': TransactionType.income},
   ];
 
   final Set<Map<String, dynamic>> _selectedCategories = {};

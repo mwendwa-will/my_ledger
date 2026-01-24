@@ -8,16 +8,18 @@ class GradientProgressBar extends StatelessWidget {
     this.height = 8,
     this.borderRadius = const BorderRadius.all(Radius.circular(4)),
     required this.colors,
-    this.backgroundColor = const Color(0xFFEEEEEE), // Default background color
+    this.backgroundColor,
   });
   final double value; // 0.0 to 1.0
   final double height;
   final BorderRadiusGeometry borderRadius;
   final List<Color> colors; // Colors for the gradient
-  final Color backgroundColor;
+  final Color? backgroundColor;
 
   @override
   Widget build(BuildContext context) {
+    final bg = backgroundColor ?? Theme.of(context).colorScheme.surface.withAlpha((0.08 * 255).round());
+
     return ClipRRect(
       borderRadius: borderRadius,
       child: SizedBox(
@@ -26,8 +28,8 @@ class GradientProgressBar extends StatelessWidget {
           children: [
             LinearProgressIndicator(
               value: 1, // Always full width background
-              backgroundColor: backgroundColor,
-              valueColor: AlwaysStoppedAnimation<Color>(backgroundColor),
+              backgroundColor: bg,
+              valueColor: AlwaysStoppedAnimation<Color>(bg),
             ),
             ShaderMask(
               shaderCallback: (Rect bounds) {

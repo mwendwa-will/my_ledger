@@ -42,12 +42,12 @@ final budgetsViewProvider = FutureProvider.autoDispose<List<BudgetView>>((ref) a
   final previousMonthBudgets = await DatabaseService.instance.getBudgetsForMonth(previousMonthDate.month, previousMonthDate.year);
   final previousMonthSpending = await DatabaseService.instance.getCategorySpending(previousMonthDate.month, previousMonthDate.year);
   
-  var views = <BudgetView>[];
+  final views = <BudgetView>[];
   
   for (final cat in expenseCategories) {
     final budget = budgets.firstWhere(
       (b) => b.categoryId == cat.id, 
-      orElse: () => Budget(categoryId: cat.id!, amount: 0, month: date.month, year: date.year)
+      orElse: () => Budget(categoryId: cat.id!, amount: 0, month: date.month, year: date.year),
     );
     
     final spent = spending[cat.id] ?? 0.0;
@@ -63,7 +63,7 @@ final budgetsViewProvider = FutureProvider.autoDispose<List<BudgetView>>((ref) a
       spentAmount: spent,
       previousMonthBudgetAmount: previousBudget?.amount,
       previousMonthSpentAmount: previousSpent,
-    ));
+    ),);
   }
   
   // Sort by highest spent or highest budget

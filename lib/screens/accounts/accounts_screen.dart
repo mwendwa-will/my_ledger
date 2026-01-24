@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:my_ledger/utils/icon_helper.dart';
 import '../../providers/account_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../utils/constants.dart';
@@ -36,9 +37,8 @@ class AccountsScreen extends ConsumerWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.account_balance_wallet_outlined, size: 64, color: Colors.grey),
-                  const SizedBox(height: 16),
-                  const Text('No accounts yet', style: TextStyle(fontSize: 18, color: Colors.grey)),
+                    Icon(Icons.account_balance_wallet_outlined, size: 64, color: Theme.of(context).colorScheme.onSurface.withAlpha((0.5 * 255).round())),
+                    Text('No accounts yet', style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Theme.of(context).colorScheme.onSurface.withAlpha((0.65 * 255).round()), fontSize: 18)),
                   const SizedBox(height: 8),
                   ElevatedButton(
                     onPressed: () {
@@ -76,7 +76,7 @@ class AccountsScreen extends ConsumerWidget {
                         ),
                         TextButton(
                           onPressed: () => Navigator.of(ctx).pop(true),
-                          style: TextButton.styleFrom(foregroundColor: AppColors.error),
+                          style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
                           child: const Text('Delete'),
                         ),
                       ],
@@ -94,10 +94,10 @@ class AccountsScreen extends ConsumerWidget {
                   }
                 },
                 background: Container(
-                  color: AppColors.error,
+                  color: Theme.of(context).colorScheme.error,
                   alignment: Alignment.centerRight,
                   padding: const EdgeInsets.only(right: 20),
-                  child: const Icon(Icons.delete, color: Colors.white),
+                  child: Icon(Icons.delete, color: Theme.of(context).colorScheme.onError),
                 ),
                 child: Card(
                   elevation: 2,
@@ -108,17 +108,17 @@ class AccountsScreen extends ConsumerWidget {
                       final col = Color(account.color);
                       return CircleAvatar(
                         backgroundColor: col.withAlpha((0.2 * 255).round()),
-                        child: Icon(IconData(account.iconCodePoint, fontFamily: 'MaterialIcons'), color: col),
+                        child: Icon(getIconFromCodePoint(account.iconCodePoint), color: col),
                       );
-                    }),
+                    },),
                     title: Text(account.name, style: const TextStyle(fontWeight: FontWeight.bold)),
                     subtitle: Text(account.type.name.toUpperCase()), // Simplified enum display
-                    trailing: Text(
+                      trailing: Text(
                       Formatters.formatCurrency(account.currentBalance, symbol: currency),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.primary,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                     ),
                     onTap: () {

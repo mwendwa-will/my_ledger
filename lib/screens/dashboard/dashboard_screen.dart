@@ -13,6 +13,7 @@ import '../../providers/settings_provider.dart';
 import '../../utils/constants.dart';
 import '../../utils/formatters.dart';
 import '../settings/settings_screen.dart';
+import '../../utils/icon_helper.dart'; // Import icon helper
 
 /// The main dashboard screen of the application.
 /// 
@@ -44,7 +45,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
             },
             tooltip: 'Open settings',
-          )
+          ),
         ],
       ),
       body: RefreshIndicator(
@@ -60,6 +61,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             children: [
               // Net Worth Card
               _buildNetWorthCard(context, totalBalance, currency),
+              const SizedBox(height: 16),
+
+              // Summary Cards
+              dashboardAsync.when(
+                data: (data) => _buildSummaryCards(context, data, currency),
+                loading: () => const SizedBox.shrink(),
+                error: (err, stack) => const SizedBox.shrink(),
+              ),
               const SizedBox(height: 16),
 
               // Spending by Category Chart
@@ -79,9 +88,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               const SizedBox(height: 24),
               
               // Recent Transactions Header
-              const Text(
+              Text(
                 'Recent Transactions',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               
@@ -106,23 +115,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   Widget _buildNetWorthCard(BuildContext context, double balance, String currency) {
     return Card(
-      color: AppColors.primary,
+      color: Theme.of(context).colorScheme.primary,
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Total Balance',
-              style: TextStyle(color: AppColors.onPrimary, fontSize: 14),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onPrimary),
             ),
             const SizedBox(height: 8),
             Text(
               Formatters.formatCurrency(balance, symbol: currency),
-              style: const TextStyle(
-                color: AppColors.onPrimary,
-                fontSize: 32,
+              style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onPrimary,
                 fontWeight: FontWeight.bold,
+                fontSize: 32,
               ),
             ),
           ],
@@ -139,7 +148,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             context,
             'Income',
             data.income,
-            AppColors.income,
+            Theme.of(context).colorScheme.secondary,
             Icons.arrow_downward,
             currency,
             previousAmount: data.previousMonthIncome,
@@ -151,7 +160,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             context,
             'Expense',
             data.expense,
-            AppColors.expense,
+            Theme.of(context).colorScheme.error,
             Icons.arrow_upward,
             currency,
             previousAmount: data.previousMonthExpense,
@@ -171,18 +180,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     {double? previousAmount,} // New optional parameter
   ) {
     IconData trendIcon = Icons.trending_flat;
-    Color trendColor = Colors.grey;
-    String trendText = '';
+    Color trendColor = Theme.of(context).colorScheme.onSurface.withAlpha((0.6 * 255).round());
 
     if (previousAmount != null) {
       if (amount > previousAmount) {
         trendIcon = Icons.arrow_upward;
-        trendColor = (title == 'Income') ? AppColors.income : AppColors.expense;
-        trendText = 'Up';
+        trendColor = (title == 'Income') ? Theme.of(context).colorScheme.secondary : Theme.of(context).colorScheme.error;
       } else if (amount < previousAmount) {
         trendIcon = Icons.arrow_downward;
-        trendColor = (title == 'Income') ? AppColors.expense : AppColors.income;
-        trendText = 'Down';
+        trendColor = (title == 'Income') ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.secondary;
       }
       // If amount == previousAmount, default Icons.trending_flat and grey is fine
     }
@@ -192,7 +198,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(AppConstants.cardRadius),
-        border: Border.all(color: Colors.grey.withAlpha(51)),
+        border: Border.all(color: Theme.of(context).dividerColor.withAlpha(51)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -201,7 +207,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             children: [
               Icon(icon, color: color, size: 16),
               const SizedBox(width: 4),
-              Text(title, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
+              Text(
+                title,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Theme.of(context).colorScheme.onSurface.withAlpha((0.65 * 255).round()), fontSize: 12),
+              ),
               if (previousAmount != null) ...[
                 const SizedBox(width: 4),
                 Icon(trendIcon, color: trendColor, size: 16),
@@ -211,7 +220,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           const SizedBox(height: 8),
           Text(
             Formatters.formatCurrency(amount, symbol: currency),
-            style: TextStyle(
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
               color: color,
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -236,7 +245,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           return const SizedBox.shrink();
         }
 
-        double totalExpense = expenseSpending.fold(0, (sum, entry) => sum + entry.value);
+        final double totalExpense = expenseSpending.fold(0, (sum, entry) => sum + entry.value);
 
         final sections = expenseSpending.asMap().entries.map((entry) {
           final index = entry.key;
@@ -256,17 +265,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             value: expenseEntry.value,
             title: isTouched ? Formatters.formatCurrency(expenseEntry.value, symbol: currencySymbol) : '${(expenseEntry.value / totalExpense * 100).toStringAsFixed(1)}%',
             radius: radius,
-            titleStyle: TextStyle(
+                titleStyle: Theme.of(context).textTheme.bodySmall?.copyWith(
               fontSize: fontSize,
               fontWeight: FontWeight.bold,
-              color: AppColors.onPrimary,
+              color: Theme.of(context).colorScheme.onPrimary,
             ),
             badgeWidget: isTouched
                 ? Semantics(
                     label: sectionLabel, // Semantic label for the touched section's badge
                     child: Icon(
-                      IconData(category.iconCodePoint, fontFamily: 'MaterialIcons'),
-                      color: AppColors.onPrimary,
+                                getIconFromCodePoint(category.iconCodePoint),
+                      color: Theme.of(context).colorScheme.onPrimary,
                       size: 25,
                     ),
                   )
@@ -278,10 +287,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Spending by Category',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
+            Text(
+                'Spending by Category',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
             const SizedBox(height: 16),
             Semantics(
               label: 'Monthly spending by category chart', // Overall chart label
@@ -359,7 +368,7 @@ SemanticsService.sendAnnouncement(
                       duration: const Duration(milliseconds: 150),
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: index == touchedIndex ? Theme.of(context).colorScheme.primary.withOpacity(0.1) : Colors.transparent,
+                        color: index == touchedIndex ? Theme.of(context).colorScheme.primary.withAlpha((0.1 * 255).round()) : Colors.transparent,
                         borderRadius: BorderRadius.circular(AppConstants.borderRadiusSmall),
                       ),
                       child: Row(
@@ -433,7 +442,9 @@ SemanticsService.sendAnnouncement(
                 final spent = budget.spent ?? 0.0;
                 final remaining = budget.amount - spent;
                 final percentage = spent / budget.amount;
-                final progressColor = percentage > 1.0 ? AppColors.error : AppColors.primary;
+                final progressColor = percentage > 1.0
+                  ? Theme.of(context).colorScheme.error
+                  : Theme.of(context).colorScheme.primary;
 
                 return Card(
                   child: Padding(
@@ -447,10 +458,10 @@ SemanticsService.sendAnnouncement(
                               radius: 16,
                               backgroundColor: Color(category.color),
                               child: Icon(
-                                IconData(category.iconCodePoint, fontFamily: 'MaterialIcons'),
-                                color: Colors.white,
-                                size: 16,
-                              ),
+                                  getIconFromCodePoint(category.iconCodePoint),
+                                  color: Colors.white,
+                                  size: 16,
+                                ),
                             ),
                             const SizedBox(width: AppConstants.smallPadding),
                             Expanded(
@@ -484,7 +495,7 @@ SemanticsService.sendAnnouncement(
                         Text(
                           '${Formatters.formatCurrency(remaining, symbol: currency)} left',
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: remaining < 0 ? AppColors.error : Colors.green,
+                            color: remaining < 0 ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.secondary,
                           ),
                         ),
                       ],
@@ -512,7 +523,7 @@ SemanticsService.sendAnnouncement(
       return Container(
         padding: const EdgeInsets.all(32),
         alignment: Alignment.center,
-        child: const Text('No transactions yet. Tap + to add one!'),
+        child: Text('No transactions yet. Tap + to add one!', style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
       );
     }
 
@@ -523,7 +534,11 @@ SemanticsService.sendAnnouncement(
       itemBuilder: (context, index) {
         final tx = data.recentTransactions[index];
         final isExpense = tx.type == TransactionType.expense;
-        final color = isExpense ? AppColors.expense : (tx.type == TransactionType.income ? AppColors.income : AppColors.transfer);
+        final color = isExpense
+          ? Theme.of(context).colorScheme.error
+          : (tx.type == TransactionType.income
+            ? Theme.of(context).colorScheme.secondary
+            : Theme.of(context).colorScheme.tertiary);
         
         final accountsMap = accountsAsync.value?.fold<Map<int, Account>>({}, (map, account) {
           if (account.id != null) {

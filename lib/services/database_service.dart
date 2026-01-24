@@ -8,10 +8,9 @@ import '../models/enums.dart';
 import '../utils/constants.dart';
 
 class DatabaseService {
+  DatabaseService._init();
   static final DatabaseService instance = DatabaseService._init();
   static Database? _database;
-
-  DatabaseService._init();
 
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -36,7 +35,9 @@ class DatabaseService {
     // Migration to add `sort_order` column to categories (version 2)
     if (oldVersion < 2) {
       try {
-        await db.execute('ALTER TABLE categories ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0');
+        await db.execute(
+          'ALTER TABLE categories ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0',
+        );
       } catch (e) {
         // If the column already exists or another error occurs, ignore to avoid crashing upgrades
       }
@@ -146,24 +147,56 @@ class DatabaseService {
         FOREIGN KEY (category_id) REFERENCES categories (id) ON DELETE RESTRICT
       )
     ''');
-    
+
     // Seed default categories
     await _seedCategories(db);
   }
 
   Future<void> _seedCategories(Database db) async {
     final List<Map<String, dynamic>> defs = [
-      {'name': 'Groceries', 'type': TransactionType.expense, 'iconKey': 'Groceries'},
+      {
+        'name': 'Groceries',
+        'type': TransactionType.expense,
+        'iconKey': 'Groceries',
+      },
       {'name': 'Rent', 'type': TransactionType.expense, 'iconKey': 'Rent'},
-      {'name': 'Utilities', 'type': TransactionType.expense, 'iconKey': 'Utilities'},
+      {
+        'name': 'Utilities',
+        'type': TransactionType.expense,
+        'iconKey': 'Utilities',
+      },
       {'name': 'Dining', 'type': TransactionType.expense, 'iconKey': 'Dining'},
-      {'name': 'Transportation', 'type': TransactionType.expense, 'iconKey': 'Transportation'},
-      {'name': 'Entertainment', 'type': TransactionType.expense, 'iconKey': 'Entertainment'},
-      {'name': 'Healthcare', 'type': TransactionType.expense, 'iconKey': 'Healthcare'},
-      {'name': 'Shopping', 'type': TransactionType.expense, 'iconKey': 'Shopping'},
+      {
+        'name': 'Transportation',
+        'type': TransactionType.expense,
+        'iconKey': 'Transportation',
+      },
+      {
+        'name': 'Entertainment',
+        'type': TransactionType.expense,
+        'iconKey': 'Entertainment',
+      },
+      {
+        'name': 'Healthcare',
+        'type': TransactionType.expense,
+        'iconKey': 'Healthcare',
+      },
+      {
+        'name': 'Shopping',
+        'type': TransactionType.expense,
+        'iconKey': 'Shopping',
+      },
       {'name': 'Salary', 'type': TransactionType.income, 'iconKey': 'Salary'},
-      {'name': 'Freelance', 'type': TransactionType.income, 'iconKey': 'Freelance'},
-      {'name': 'Investments', 'type': TransactionType.income, 'iconKey': 'Investments'},
+      {
+        'name': 'Freelance',
+        'type': TransactionType.income,
+        'iconKey': 'Freelance',
+      },
+      {
+        'name': 'Investments',
+        'type': TransactionType.income,
+        'iconKey': 'Investments',
+      },
     ];
 
     for (int i = 0; i < defs.length; i++) {
@@ -171,8 +204,10 @@ class DatabaseService {
       final category = Category(
         name: def['name'] as String,
         type: def['type'] as TransactionType,
-        color: AppConstants.defaultCategoryColors[i % AppConstants.defaultCategoryColors.length],
-        iconCodePoint: AppConstants.defaultCategoryIcons[def['iconKey'] as String]!,
+        color: AppConstants.defaultCategoryColors[
+            i % AppConstants.defaultCategoryColors.length],
+        iconCodePoint:
+            AppConstants.defaultCategoryIcons[def['iconKey'] as String]!,
         sortOrder: i,
       );
       await db.insert('categories', category.toMap());
@@ -203,17 +238,71 @@ class DatabaseService {
 
   Future<int> updateAccount(Account account) async {
     final db = await instance.database;
-    return await db.update('accounts', account.toMap(), where: 'id = ?', whereArgs: [account.id]);
+    return await db.update(
+      'accounts',
+      account.toMap(),
+      where: 'id = ?',
+      whereArgs: [account.id],
+    );
   }
 
-  Future<int> deleteAccount(int id) async {
+  Future<int> deleteAccount(int id, {int? reassignToAccountId}) async {
     final db = await instance.database;
-    // Check if account has transactions
-    final count = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM transactions WHERE account_id = ? OR to_account_id = ?', [id, id]));
-    if (count != null && count > 0) {
-      throw Exception('Cannot delete account with existing transactions. Please archive it instead.');
-    }
-    return await db.delete('accounts', where: 'id = ?', whereArgs: [id]);
+    return await db.transaction((txn) async {
+      // Check if account has transactions
+      final count = Sqflite.firstIntValue(
+        await txn.rawQuery(
+          'SELECT COUNT(*) FROM transactions WHERE account_id = ? OR to_account_id = ?',
+          [id, id],
+        ),
+      );
+
+      if (count != null && count > 0) {
+        if (reassignToAccountId == null) {
+          throw Exception(
+            'Account has $count transactions. Cannot delete without reassigning.',
+          );
+        }
+
+        // Reassign transactions to another account
+        // Update source account transactions
+        await txn.rawUpdate(
+          'UPDATE transactions SET account_id = ? WHERE account_id = ?',
+          [reassignToAccountId, id],
+        );
+
+        // Update destination account transactions (for transfers)
+        await txn.rawUpdate(
+          'UPDATE transactions SET to_account_id = ? WHERE to_account_id = ?',
+          [reassignToAccountId, id],
+        );
+
+        // Transfer the balance to the reassignment account
+        final accountMaps =
+            await txn.query('accounts', where: 'id = ?', whereArgs: [id]);
+        if (accountMaps.isNotEmpty) {
+          final account = Account.fromMap(accountMaps.first);
+          await txn.rawUpdate(
+            'UPDATE accounts SET current_balance = current_balance + ? WHERE id = ?',
+            [account.currentBalance, reassignToAccountId],
+          );
+        }
+      }
+
+      // Delete the account
+      return await txn.delete('accounts', where: 'id = ?', whereArgs: [id]);
+    });
+  }
+
+  Future<int> countTransactionsForAccount(int accountId) async {
+    final db = await instance.database;
+    final count = Sqflite.firstIntValue(
+      await db.rawQuery(
+        'SELECT COUNT(*) FROM transactions WHERE account_id = ? OR to_account_id = ?',
+        [accountId, accountId],
+      ),
+    );
+    return count ?? 0;
   }
 
   // --- CATEGORIES ---
@@ -234,22 +323,28 @@ class DatabaseService {
 
   Future<int> updateCategory(Category category) async {
     final db = await instance.database;
-    return await db.update('categories', category.toMap(), where: 'id = ?', whereArgs: [category.id]);
+    return await db.update(
+      'categories',
+      category.toMap(),
+      where: 'id = ?',
+      whereArgs: [category.id],
+    );
   }
 
   Future<List<Category>> getAllCategories() async {
     final db = await instance.database;
-    final result = await db.query('categories', orderBy: 'sort_order ASC, name ASC');
+    final result =
+        await db.query('categories', orderBy: 'sort_order ASC, name ASC');
     return result.map((json) => Category.fromMap(json)).toList();
   }
-  
+
   Future<List<Category>> getCategoriesByType(TransactionType type) async {
     final db = await instance.database;
     final result = await db.query(
-      'categories', 
-      where: 'type = ?', 
+      'categories',
+      where: 'type = ?',
       whereArgs: [type.index],
-      orderBy: 'sort_order ASC, name ASC'
+      orderBy: 'sort_order ASC, name ASC',
     );
     return result.map((json) => Category.fromMap(json)).toList();
   }
@@ -295,7 +390,12 @@ class DatabaseService {
 
   Future<int> countTransactionsForCategory(int categoryId) async {
     final db = await instance.database;
-    final count = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM transactions WHERE category_id = ?', [categoryId]));
+    final count = Sqflite.firstIntValue(
+      await db.rawQuery(
+        'SELECT COUNT(*) FROM transactions WHERE category_id = ?',
+        [categoryId],
+      ),
+    );
     return count ?? 0;
   }
 
@@ -304,38 +404,50 @@ class DatabaseService {
   Future<int> createTransaction(TransactionItem transaction) async {
     final db = await instance.database;
     return await db.transaction((txn) async {
-      int id = await txn.insert('transactions', transaction.toMap());
+      final int id = await txn.insert('transactions', transaction.toMap());
 
       // Update Account Balance
       if (transaction.type == TransactionType.income) {
-         await txn.rawUpdate('UPDATE accounts SET current_balance = current_balance + ? WHERE id = ?', [transaction.amount, transaction.accountId]);
+        await txn.rawUpdate(
+          'UPDATE accounts SET current_balance = current_balance + ? WHERE id = ?',
+          [transaction.amount, transaction.accountId],
+        );
       } else if (transaction.type == TransactionType.expense) {
-         await txn.rawUpdate('UPDATE accounts SET current_balance = current_balance - ? WHERE id = ?', [transaction.amount, transaction.accountId]);
+        await txn.rawUpdate(
+          'UPDATE accounts SET current_balance = current_balance - ? WHERE id = ?',
+          [transaction.amount, transaction.accountId],
+        );
       } else if (transaction.type == TransactionType.transfer) {
-         // Deduct from source
-         await txn.rawUpdate('UPDATE accounts SET current_balance = current_balance - ? WHERE id = ?', [transaction.amount, transaction.accountId]);
-         // Add to destination
-         if (transaction.toAccountId != null) {
-           await txn.rawUpdate('UPDATE accounts SET current_balance = current_balance + ? WHERE id = ?', [transaction.amount, transaction.toAccountId]);
-         }
+        // Deduct from source
+        await txn.rawUpdate(
+          'UPDATE accounts SET current_balance = current_balance - ? WHERE id = ?',
+          [transaction.amount, transaction.accountId],
+        );
+        // Add to destination
+        if (transaction.toAccountId != null) {
+          await txn.rawUpdate(
+            'UPDATE accounts SET current_balance = current_balance + ? WHERE id = ?',
+            [transaction.amount, transaction.toAccountId],
+          );
+        }
       }
       return id;
     });
   }
 
   Future<List<TransactionItem>> getTransactions({
-    DateTime? startDate, 
-    DateTime? endDate, 
-    int? categoryId, 
+    DateTime? startDate,
+    DateTime? endDate,
+    int? categoryId,
     int? accountId,
     String? searchQuery,
     int limit = 100,
     int offset = 0,
   }) async {
     final db = await instance.database;
-    
+
     String whereClause = '1=1';
-    List<dynamic> args = [];
+    final List<dynamic> args = [];
 
     if (startDate != null) {
       whereClause += ' AND date >= ?';
@@ -376,38 +488,121 @@ class DatabaseService {
     final db = await instance.database;
     final tx = await db.query('transactions', where: 'id = ?', whereArgs: [id]);
     if (tx.isEmpty) return;
-    
+
     final transaction = TransactionItem.fromMap(tx.first);
 
     await db.transaction((txn) async {
       // Revert Balance
       if (transaction.type == TransactionType.income) {
-         await txn.rawUpdate('UPDATE accounts SET current_balance = current_balance - ? WHERE id = ?', [transaction.amount, transaction.accountId]);
+        await txn.rawUpdate(
+          'UPDATE accounts SET current_balance = current_balance - ? WHERE id = ?',
+          [transaction.amount, transaction.accountId],
+        );
       } else if (transaction.type == TransactionType.expense) {
-         await txn.rawUpdate('UPDATE accounts SET current_balance = current_balance + ? WHERE id = ?', [transaction.amount, transaction.accountId]);
+        await txn.rawUpdate(
+          'UPDATE accounts SET current_balance = current_balance + ? WHERE id = ?',
+          [transaction.amount, transaction.accountId],
+        );
       } else if (transaction.type == TransactionType.transfer) {
-         await txn.rawUpdate('UPDATE accounts SET current_balance = current_balance + ? WHERE id = ?', [transaction.amount, transaction.accountId]);
-         if (transaction.toAccountId != null) {
-           await txn.rawUpdate('UPDATE accounts SET current_balance = current_balance - ? WHERE id = ?', [transaction.amount, transaction.toAccountId]);
-         }
+        await txn.rawUpdate(
+          'UPDATE accounts SET current_balance = current_balance + ? WHERE id = ?',
+          [transaction.amount, transaction.accountId],
+        );
+        if (transaction.toAccountId != null) {
+          await txn.rawUpdate(
+            'UPDATE accounts SET current_balance = current_balance - ? WHERE id = ?',
+            [transaction.amount, transaction.toAccountId],
+          );
+        }
       }
-      
+
       await txn.delete('transactions', where: 'id = ?', whereArgs: [id]);
     });
   }
 
+  Future<int> updateTransaction(TransactionItem transaction) async {
+    final db = await instance.database;
+    return await db.transaction((txn) async {
+      final maps = await txn
+          .query('transactions', where: 'id = ?', whereArgs: [transaction.id]);
+      if (maps.isEmpty) throw Exception('Transaction not found');
+      final old = TransactionItem.fromMap(maps.first);
+
+      // Revert old transaction effect on balances
+      if (old.type == TransactionType.income) {
+        await txn.rawUpdate(
+          'UPDATE accounts SET current_balance = current_balance - ? WHERE id = ?',
+          [old.amount, old.accountId],
+        );
+      } else if (old.type == TransactionType.expense) {
+        await txn.rawUpdate(
+          'UPDATE accounts SET current_balance = current_balance + ? WHERE id = ?',
+          [old.amount, old.accountId],
+        );
+      } else if (old.type == TransactionType.transfer) {
+        await txn.rawUpdate(
+          'UPDATE accounts SET current_balance = current_balance + ? WHERE id = ?',
+          [old.amount, old.accountId],
+        );
+        if (old.toAccountId != null) {
+          await txn.rawUpdate(
+            'UPDATE accounts SET current_balance = current_balance - ? WHERE id = ?',
+            [old.amount, old.toAccountId],
+          );
+        }
+      }
+
+      // Apply new transaction effect on balances
+      if (transaction.type == TransactionType.income) {
+        await txn.rawUpdate(
+          'UPDATE accounts SET current_balance = current_balance + ? WHERE id = ?',
+          [transaction.amount, transaction.accountId],
+        );
+      } else if (transaction.type == TransactionType.expense) {
+        await txn.rawUpdate(
+          'UPDATE accounts SET current_balance = current_balance - ? WHERE id = ?',
+          [transaction.amount, transaction.accountId],
+        );
+      } else if (transaction.type == TransactionType.transfer) {
+        await txn.rawUpdate(
+          'UPDATE accounts SET current_balance = current_balance - ? WHERE id = ?',
+          [transaction.amount, transaction.accountId],
+        );
+        if (transaction.toAccountId != null) {
+          await txn.rawUpdate(
+            'UPDATE accounts SET current_balance = current_balance + ? WHERE id = ?',
+            [transaction.amount, transaction.toAccountId],
+          );
+        }
+      }
+
+      await txn.update(
+        'transactions',
+        transaction.toMap(),
+        where: 'id = ?',
+        whereArgs: [transaction.id],
+      );
+      return transaction.id ?? -1;
+    });
+  }
+
   // --- BUDGETS ---
-  
+
   Future<List<Budget>> getBudgetsForMonth(int month, int year) async {
     final db = await instance.database;
     // Get budgets
-    final budgetsResult = await db.query('budgets', where: 'month = ? AND year = ?', whereArgs: [month, year]);
-    List<Budget> budgets = budgetsResult.map((e) => Budget.fromMap(e)).toList();
-    
+    final budgetsResult = await db.query(
+      'budgets',
+      where: 'month = ? AND year = ?',
+      whereArgs: [month, year],
+    );
+    final List<Budget> budgets =
+        budgetsResult.map((e) => Budget.fromMap(e)).toList();
+
     // Calculate spent amount for each budget
     // This is a naive loop, but okay for typical number of categories (10-20)
-    List<Budget> result = [];
-    for (var b in budgets) {
+    final List<Budget> result = [];
+    for (final b in budgets) {
       final sumResult = await db.rawQuery('''
         SELECT SUM(amount) as total 
         FROM transactions 
@@ -416,12 +611,12 @@ class DatabaseService {
         AND strftime('%m', date) = ? 
         AND strftime('%Y', date) = ?
       ''', [
-        b.categoryId, 
-        TransactionType.expense.index, 
-        month.toString().padLeft(2, '0'), 
-        year.toString()
+        b.categoryId,
+        TransactionType.expense.index,
+        month.toString().padLeft(2, '0'),
+        year.toString(),
       ]);
-      
+
       double spent = 0;
       final totalVal = sumResult.first['total'];
       if (totalVal != null) {
@@ -431,39 +626,54 @@ class DatabaseService {
     }
     return result;
   }
-  
+
   Future<int> setBudget(Budget budget) async {
     final db = await instance.database;
     // Check if exists
-    final exists = await db.query('budgets', 
-      where: 'category_id = ? AND month = ? AND year = ?', 
-      whereArgs: [budget.categoryId, budget.month, budget.year]
+    final exists = await db.query(
+      'budgets',
+      where: 'category_id = ? AND month = ? AND year = ?',
+      whereArgs: [budget.categoryId, budget.month, budget.year],
     );
-    
+
     if (exists.isNotEmpty) {
-      return await db.update('budgets', budget.toMap(), 
-        where: 'id = ?', whereArgs: [exists.first['id']]);
+      final Map<String, dynamic> updated =
+          Map<String, dynamic>.from(budget.toMap());
+      // Never include the primary key in the SET clause for updates — remove it if present
+      updated.remove('id');
+      return await db.update(
+        'budgets',
+        updated,
+        where: 'id = ?',
+        whereArgs: [exists.first['id']],
+      );
     } else {
       return await db.insert('budgets', budget.toMap());
     }
   }
 
   // --- REPORTS ---
-  
+
   Future<Map<String, double>> getMonthlySummary(int month, int year) async {
     final db = await instance.database;
     final m = month.toString().padLeft(2, '0');
     final y = year.toString();
-    
-    final incomeRes = await db.rawQuery('''
+
+    final incomeRes = await db.rawQuery(
+      '''
       SELECT SUM(amount) as total FROM transactions 
       WHERE type = ? AND strftime('%m', date) = ? AND strftime('%Y', date) = ?
-    ''', [TransactionType.income.index, m, y]);
-    
-    final expenseRes = await db.rawQuery('''
+    ''',
+      [TransactionType.income.index, m, y],
+    );
+
+    final expenseRes = await db.rawQuery(
+      '''
       SELECT SUM(amount) as total FROM transactions 
       WHERE type = ? AND strftime('%m', date) = ? AND strftime('%Y', date) = ?
-    ''', [TransactionType.expense.index, m, y]);
+    ''',
+      [TransactionType.expense.index, m, y],
+    );
 
     final incomeVal = incomeRes.first['total'];
     final expenseVal = expenseRes.first['total'];
@@ -478,28 +688,36 @@ class DatabaseService {
     final m = month.toString().padLeft(2, '0');
     final y = year.toString();
 
-    final result = await db.rawQuery('''
+    final result = await db.rawQuery(
+      '''
       SELECT category_id, SUM(amount) as total 
       FROM transactions 
       WHERE type = ? AND strftime('%m', date) = ? AND strftime('%Y', date) = ? AND category_id IS NOT NULL
       GROUP BY category_id
-    ''', [TransactionType.expense.index, m, y]);
+    ''',
+      [TransactionType.expense.index, m, y],
+    );
 
     final Map<int, double> spending = {};
-    for (var row in result) {
+    for (final row in result) {
       final totalVal = row['total'];
       spending[row['category_id'] as int] = (totalVal as num).toDouble();
     }
     return spending;
   }
-  
+
   // New method to get frequent categories
-  Future<List<Category>> getFrequentCategories(TransactionType type, {int limit = 5, int daysAgo = 90}) async {
+  Future<List<Category>> getFrequentCategories(
+    TransactionType type, {
+    int limit = 5,
+    int daysAgo = 90,
+  }) async {
     final db = await instance.database;
     final now = DateTime.now();
     final dateLimit = now.subtract(Duration(days: daysAgo));
 
-    final result = await db.rawQuery('''
+    final result = await db.rawQuery(
+      '''
       SELECT c.id, c.name, c.type, c.color, c.icon_code_point, c.is_archived, c.monthly_budget_limit, c.sort_order,
              COUNT(t.id) as transaction_count
       FROM categories c
@@ -508,14 +726,33 @@ class DatabaseService {
       GROUP BY c.id, c.name, c.type, c.color, c.icon_code_point, c.is_archived, c.monthly_budget_limit, c.sort_order
       ORDER BY transaction_count DESC
       LIMIT ?
-    ''', [type.index, dateLimit.toIso8601String(), limit]);
+    ''',
+      [type.index, dateLimit.toIso8601String(), limit],
+    );
 
     return result.map((json) => Category.fromMap(json)).toList();
   }
-  
+
   // Method to close DB
   Future<void> close() async {
     final db = await instance.database;
     await db.close();
+  }
+
+  /// Deletes the entire database file and resets the in-memory handle.
+  /// Use with caution — this will remove all user data.
+  Future<void> deleteAllData() async {
+    // Close current DB connection first
+    try {
+      if (_database != null) {
+        await _database!.close();
+      }
+    } catch (_) {}
+    _database = null;
+    final dbPath = await getDatabasesPath();
+    final path = join(dbPath, AppConstants.dbName);
+    try {
+      await deleteDatabase(path);
+    } catch (_) {}
   }
 }

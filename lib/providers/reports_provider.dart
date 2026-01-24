@@ -5,11 +5,11 @@ import '../models/category.dart';
 import 'category_provider.dart';
 
 class ExpenseBreakdown {
+  
+  ExpenseBreakdown(this.category, this.amount, this.percentage);
   final Category category;
   final double amount;
   final double percentage;
-  
-  ExpenseBreakdown(this.category, this.amount, this.percentage);
 }
 
 final reportMonthProvider = StateProvider<DateTime>((ref) => DateTime.now());
@@ -24,7 +24,7 @@ final expensePieChartProvider = FutureProvider.autoDispose<List<ExpenseBreakdown
 
   if (total == 0) return [];
 
-  List<ExpenseBreakdown> list = [];
+  final List<ExpenseBreakdown> list = [];
   spending.forEach((catId, amount) {
     if (categoryMap.containsKey(catId)) {
       list.add(ExpenseBreakdown(categoryMap[catId]!, amount, (amount / total) * 100));
@@ -36,16 +36,16 @@ final expensePieChartProvider = FutureProvider.autoDispose<List<ExpenseBreakdown
 });
 
 class MonthlyTrend {
+  
+  MonthlyTrend(this.date, this.income, this.expense);
   final DateTime date;
   final double income;
   final double expense;
-  
-  MonthlyTrend(this.date, this.income, this.expense);
 }
 
 final trendChartProvider = FutureProvider.autoDispose<List<MonthlyTrend>>((ref) async {
   final now = DateTime.now();
-  List<MonthlyTrend> trends = [];
+  final List<MonthlyTrend> trends = [];
   
   for (int i = 5; i >= 0; i--) {
     final date = DateTime(now.year, now.month - i, 1);

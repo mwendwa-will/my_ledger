@@ -25,6 +25,28 @@ class CategoriesNotifier extends AsyncNotifier<List<Category>> {
     });
   }
 
+  Future<void> archiveCategory(int categoryId) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      final all = await DatabaseService.instance.getAllCategories();
+      final cat = all.firstWhere((c) => c.id == categoryId, orElse: () => throw Exception('Category not found'));
+      final updated = cat.copyWith(isArchived: true);
+      await DatabaseService.instance.updateCategory(updated);
+      return DatabaseService.instance.getAllCategories();
+    });
+  }
+
+  Future<void> unarchiveCategory(int categoryId) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      final all = await DatabaseService.instance.getAllCategories();
+      final cat = all.firstWhere((c) => c.id == categoryId, orElse: () => throw Exception('Category not found'));
+      final updated = cat.copyWith(isArchived: false);
+      await DatabaseService.instance.updateCategory(updated);
+      return DatabaseService.instance.getAllCategories();
+    });
+  }
+
   Future<void> deleteCategory(int categoryId, {int? reassignToCategoryId}) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {

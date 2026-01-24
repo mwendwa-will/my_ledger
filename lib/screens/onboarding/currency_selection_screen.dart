@@ -49,29 +49,29 @@ class _CurrencySelectionScreenState extends ConsumerState<CurrencySelectionScree
             const SizedBox(height: 40),
             Expanded(
               child: ListView.builder(
-                itemCount: _currencies.length,
-                itemBuilder: (context, index) {
-                  final currency = _currencies[index];
-                  return Card(
-                    child: RadioListTile<String>(
-                      title: Text(currency['name']!),
-                      subtitle: Text(currency['code']!),
-                      secondary: Text(
-                        currency['symbol']!,
-                        style: const TextStyle(fontSize: 24),
+                  itemCount: _currencies.length,
+                  itemBuilder: (context, index) {
+                    final currency = _currencies[index];
+                    final code = currency['code']!;
+                    return Card(
+                      child: ListTile(
+                        title: Text(currency['name']!),
+                        subtitle: Text(currency['code']!),
+                        trailing: _selectedCurrencyCode == code ? const Icon(Icons.check) : null,
+                        leading: Text(
+                          currency['symbol']!,
+                          style: const TextStyle(fontSize: 24),
+                        ),
+                        onTap: () {
+                          setState(() {
+                            _selectedCurrencyCode = code;
+                          });
+                          widget.onCurrencySelected(code);
+                        },
                       ),
-                      value: currency['code']!,
-                      groupValue: _selectedCurrencyCode,
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedCurrencyCode = value!;
-                          widget.onCurrencySelected(value);
-                        });
-                      },
-                    ),
-                  );
-                },
-              ),
+                    );
+                  },
+                ),
             ),
           ],
         ),

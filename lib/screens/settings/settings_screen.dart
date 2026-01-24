@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_auth/local_auth.dart';
-import 'package:path/path.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:sqflite/sqflite.dart';
+import '../../services/database_service.dart';
+import '../onboarding/onboarding_screen.dart';
 
 import '../../providers/settings_provider.dart';
 import '../../services/backup_service.dart';
-import '../../utils/constants.dart';
+
 import 'categories/categories_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -38,7 +38,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Future<void> _toggleBiometric(BuildContext context, bool value) async {
     if (value) {
       final resultMessage = await _enableBiometricFlow();
-      if (!mounted) {
+      if (!context.mounted) {
         return;
       }
       if (resultMessage != null) {
@@ -162,14 +162,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ListTile(
             title: const Text('Clear All Data'),
             subtitle: const Text('Delete all accounts and transactions'),
-            leading: const Icon(Icons.delete_forever, color: AppColors.error),
+            leading: Icon(Icons.delete_forever, color: Theme.of(context).colorScheme.error),
             onTap: () {
               _showDeleteAllDialog(context);
             },
           ),
           
           const SizedBox(height: 32),
-          const Center(child: Text('Version 1.0.0', style: TextStyle(color: Colors.grey))),
+          Center(child: Text('Version 1.0.0', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurface.withAlpha((0.6 * 255).round())))),
         ],
       ),
     );
@@ -217,26 +217,49 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   void _showDeleteAllDialog(BuildContext context) {
+    final controller = TextEditingController();
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete All Data?'),
-        content: const Text('This will permanently delete all your data. This action cannot be undone.'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('This will permanently delete all your data. This action cannot be undone.'),
+            const SizedBox(height: 12),
+            const Text('Type DELETE to confirm:'),
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(hintText: 'DELETE'),
+            ),
+          ],
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           TextButton(
             onPressed: () async {
-              // Nuclear option
-              final navigator = Navigator.of(ctx);
-              final messenger = ScaffoldMessenger.of(ctx);
-              final dbPath = await getDatabasesPath();
-              final path = join(dbPath, AppConstants.dbName);
-              await deleteDatabase(path);
-              navigator.pop();
-              messenger.showSnackBar(const SnackBar(content: Text('All data deleted. Restarting...')));
-              // In a real app we might trigger a full state reset, here we just ask user to restart or reset navigation
+              if (controller.text.trim() != 'DELETE') {
+                ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Confirmation text did not match')));
+                return;
+              }
+              Navigator.pop(ctx);
+              final messenger = ScaffoldMessenger.of(context);
+              try {
+                await DatabaseService.instance.deleteAllData();
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.clear();
+                messenger.showSnackBar(const SnackBar(content: Text('All data deleted. Restarting to onboarding...')));
+                if (context.mounted) {
+                  await Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+                    (route) => false,
+                  );
+                }
+              } catch (e) {
+                messenger.showSnackBar(SnackBar(content: Text('Error deleting data: $e')));
+              }
             },
-            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
             child: const Text('Delete All'),
           ),
         ],

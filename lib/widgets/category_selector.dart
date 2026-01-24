@@ -4,6 +4,7 @@ import '../models/category.dart';
 import '../models/enums.dart';
 import '../providers/category_provider.dart';
 import '../utils/constants.dart';
+import '../utils/icon_helper.dart';
 
 class CategorySelector extends ConsumerStatefulWidget {
 
@@ -35,7 +36,7 @@ class _CategorySelectorState extends ConsumerState<CategorySelector> {
               radius: 24,
               backgroundColor: Color(category.color),
               child: Icon(
-                IconData(category.iconCodePoint, fontFamily: 'MaterialIcons'),
+                getIconFromCodePoint(category.iconCodePoint),
                 color: Colors.white,
                 size: 24,
               ),

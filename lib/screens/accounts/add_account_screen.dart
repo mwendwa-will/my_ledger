@@ -23,7 +23,7 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
   // Simple color picker
   final List<Color> _colors = [
     Colors.blue, Colors.green, Colors.red, Colors.orange, 
-    Colors.purple, Colors.teal, Colors.indigo, Colors.brown
+    Colors.purple, Colors.teal, Colors.indigo, Colors.brown,
   ];
   late Color _selectedColor;
 
@@ -103,9 +103,11 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
           children: [
             TextFormField(
               controller: _nameController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Account Name',
-                border: OutlineInputBorder(),
+                hintText: 'e.g., Checking',
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.drive_file_rename_outline),
               ),
               validator: (val) => val == null || val.isEmpty ? 'Please enter a name' : null,
             ),
@@ -113,9 +115,10 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
             
             DropdownButtonFormField<AccountType>(
               initialValue: _selectedType,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Account Type',
-                border: OutlineInputBorder(),
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.account_tree_outlined),
               ),
               items: AccountType.values.map((type) {
                 return DropdownMenuItem(
@@ -129,24 +132,29 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
             
             TextFormField(
               controller: _balanceController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Initial Balance',
-                border: OutlineInputBorder(),
+                border: const OutlineInputBorder(),
                 prefixText: r'$ ',
+                helperText: widget.accountToEdit == null ? 'Initial balance can be set now' : null,
               ),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               validator: (val) => double.tryParse(val ?? '') == null ? 'Invalid amount' : null,
               enabled: widget.accountToEdit == null, // Prevent changing initial balance on edit to avoid confusion logic for now, or handle carefully
             ),
             if (widget.accountToEdit != null)
-              const Padding(
-                padding: EdgeInsets.only(top: 8),
-                child: Text('Initial balance cannot be changed after creation.', style: TextStyle(color: Colors.grey, fontSize: 12)),
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  'Initial balance cannot be changed after creation.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurface.withAlpha((0.6 * 255).round()), fontSize: 12),
+                ),
               ),
             const SizedBox(height: 24),
             
-            const Text('Color Code', style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
+            Text('Color Code', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 24),
+
             Wrap(
               spacing: 12,
               runSpacing: 12,
@@ -160,15 +168,15 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
                     decoration: BoxDecoration(
                       color: color,
                       shape: BoxShape.circle,
-                      border: isSelected ? Border.all(color: Colors.black, width: 3) : null,
+                      border: isSelected ? Border.all(color: Theme.of(context).colorScheme.onSurface, width: 3) : null,
                       boxShadow: [
-                         BoxShadow(
-                           color: Colors.black.withValues(alpha:0.1),
-                           blurRadius: 4,
-                         )
+                        BoxShadow(
+                          color: Theme.of(context).shadowColor.withAlpha((0.1 * 255).round()),
+                          blurRadius: 4,
+                        ),
                       ],
                     ),
-                    child: isSelected ? const Icon(Icons.check, color: Colors.white) : null,
+                    child: isSelected ? Icon(Icons.check, color: Theme.of(context).colorScheme.onPrimary) : null,
                   ),
                 );
               }).toList(),

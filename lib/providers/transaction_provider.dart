@@ -85,6 +85,23 @@ class TransactionsNotifier extends AsyncNotifier<List<TransactionItem>> {
     });
   }
 
+  Future<void> updateTransaction(TransactionItem transaction) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      await DatabaseService.instance.updateTransaction(transaction);
+      ref.invalidate(accountsProvider);
+
+      final filter = ref.read(transactionFilterProvider);
+      return DatabaseService.instance.getTransactions(
+        startDate: filter.startDate,
+        endDate: filter.endDate,
+        categoryId: filter.categoryId,
+        accountId: filter.accountId,
+        searchQuery: filter.searchQuery,
+      );
+    });
+  }
+
   Future<void> deleteTransaction(int id) async {
     state = await AsyncValue.guard(() async {
       await DatabaseService.instance.deleteTransaction(id);
