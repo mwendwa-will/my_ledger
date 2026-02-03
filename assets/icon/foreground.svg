@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="512" height="512" viewBox="0 0 512 512" version="1.1" xmlns="http://www.w3.org/2000/svg">
+  <!-- Abstract Ledger/Wallet Element (White) -->
+  <path d="M140 150 L372 150 A20 20 0 0 1 392 170 L392 342 A20 20 0 0 1 372 362 L140 362 A20 20 0 0 1 120 342 L120 170 A20 20 0 0 1 140 150 Z" fill="#FFFFFF"/>
+  
+  <!-- Financial Accent (Graph bars inside) -->
+  <rect x="170" y="280" width="40" height="50" rx="4" fill="#4CAF50" />
+  <rect x="236" y="230" width="40" height="100" rx="4" fill="#4CAF50" />
+  <rect x="302" y="190" width="40" height="140" rx="4" fill="#4CAF50" />
+  
+  <!-- Checkmark highlight -->
+  <path d="M370 120 L370 180" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" opacity="0.5"/>
+</svg>

@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../utils/currency_helper.dart';
 
 // Currency Provider
 final currencyCodeProvider = StateNotifierProvider<CurrencyNotifier, String>((ref) {
@@ -12,15 +13,6 @@ class CurrencyNotifier extends StateNotifier<String> {
   CurrencyNotifier() : super('USD') { // Default to USD
     _loadCurrencyCode();
   }
-  // Map currency codes to their symbols
-  static const Map<String, String> _currencySymbols = {
-    'USD': r'$',
-    'EUR': '€',
-    'GBP': '£',
-    'JPY': '¥',
-    'INR': '₹',
-    // Add more currencies as needed
-  };
 
   Future<void> _loadCurrencyCode() async {
     final prefs = await SharedPreferences.getInstance();
@@ -33,7 +25,7 @@ class CurrencyNotifier extends StateNotifier<String> {
     await prefs.setString('currency_code', code);
   }
 
-  String get currentCurrencySymbol => _currencySymbols[state] ?? r'$';
+  String get currentCurrencySymbol => CurrencyHelper.getSymbol(state);
 }
 
 // Expose current currency symbol for convenience

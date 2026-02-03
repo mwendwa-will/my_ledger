@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/account.dart';
 import '../../models/enums.dart';
 import '../../providers/account_provider.dart';
+import '../../providers/settings_provider.dart';
 import '../../utils/constants.dart';
+import '../../utils/currency_helper.dart';
 
 class AddAccountScreen extends ConsumerStatefulWidget { // If null, create new
 
@@ -92,6 +94,7 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currencyCode = ref.watch(currencyCodeProvider);
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.accountToEdit != null ? 'Edit Account' : 'Add Account'),
@@ -135,7 +138,7 @@ class _AddAccountScreenState extends ConsumerState<AddAccountScreen> {
               decoration: InputDecoration(
                 labelText: 'Initial Balance',
                 border: const OutlineInputBorder(),
-                prefixText: r'$ ',
+                prefixText: '${CurrencyHelper.getSymbol(currencyCode)} ',
                 helperText: widget.accountToEdit == null ? 'Initial balance can be set now' : null,
               ),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),

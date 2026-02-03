@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/enums.dart';
+import '../../utils/currency_helper.dart';
 
 class AddFirstAccountScreen extends StatefulWidget {
 
@@ -11,6 +12,7 @@ class AddFirstAccountScreen extends StatefulWidget {
     required this.initialAccountName,
     required this.initialAccountType,
     required this.initialStartingBalance,
+    required this.selectedCurrencyCode,
   });
   final Function(String) onAccountNameChanged;
   final Function(AccountType) onAccountTypeChanged;
@@ -18,6 +20,7 @@ class AddFirstAccountScreen extends StatefulWidget {
   final String initialAccountName;
   final AccountType initialAccountType;
   final double initialStartingBalance;
+  final String selectedCurrencyCode;
 
   @override
   State<AddFirstAccountScreen> createState() => _AddFirstAccountScreenState();
@@ -126,10 +129,10 @@ class _AddFirstAccountScreenState extends State<AddFirstAccountScreen> {
               const SizedBox(height: 20),
               TextFormField(
                 controller: _balanceController,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Starting Balance (Optional)',
-                  border: OutlineInputBorder(),
-                  prefixText: r'$',
+                  border: const OutlineInputBorder(),
+                  prefixText: CurrencyHelper.getSymbol(widget.selectedCurrencyCode),
                 ),
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
               ),
@@ -146,7 +149,7 @@ class _AddFirstAccountScreenState extends State<AddFirstAccountScreen> {
                   title: Text(_nameController.text),
                   subtitle: Text(_selectedType.name.substring(0,1).toUpperCase() + _selectedType.name.substring(1)),
                   trailing: Text(
-                    '\$${(double.tryParse(_balanceController.text) ?? 0.00).toStringAsFixed(2)}',
+                    CurrencyHelper.format(double.tryParse(_balanceController.text) ?? 0.00, currencyCode: widget.selectedCurrencyCode),
                     style: const TextStyle(
                         fontSize: 16, fontWeight: FontWeight.bold,),
                   ),

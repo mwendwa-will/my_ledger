@@ -12,6 +12,7 @@ import '../../providers/category_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/transaction_provider.dart';
 import '../../utils/constants.dart';
+import '../../utils/currency_helper.dart';
 import '../../utils/icon_helper.dart';
 import '../../utils/formatters.dart';
 import 'add_transaction_screen.dart';
@@ -27,7 +28,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   final TextEditingController _searchController = TextEditingController();
   bool _isSearching = false;
   bool _isInSelectionMode = false; // New state for selection mode
-  final Set<int> _selectedTransactionIds = {}; // New state for selected transactions
+  final Set<int> _selectedTransactionIds =
+      {}; // New state for selected transactions
 
   @override
   void dispose() {
@@ -36,7 +38,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   }
 
   void _onSearchChanged(String query) {
-    ref.read(transactionFilterProvider.notifier).update((state) => state.copyWith(searchQuery: query));
+    ref
+        .read(transactionFilterProvider.notifier)
+        .update((state) => state.copyWith(searchQuery: query));
   }
 
   void _clearSearch() {
@@ -58,16 +62,30 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     final messenger = ScaffoldMessenger.of(context);
     final count = _selectedTransactionIds.length;
     final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Transactions?'),
-        content: Text('Are you sure you want to delete $count selected transactions?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text('Delete', style: TextStyle(color: Theme.of(context).colorScheme.error))),
-        ],
-      ),
-    ) ?? false;
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Delete Transactions?'),
+            content: Text(
+              'Are you sure you want to delete $count selected transactions?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text(
+                  'Delete',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ) ??
+        false;
 
     if (confirmed) {
       for (final id in _selectedTransactionIds) {
@@ -86,16 +104,22 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       context: context,
       firstDate: DateTime(2020),
       lastDate: DateTime(2030),
-      initialDateRange: currentFilter.startDate != null && currentFilter.endDate != null 
-          ? DateTimeRange(start: currentFilter.startDate!, end: currentFilter.endDate!) 
-          : null,
+      initialDateRange:
+          currentFilter.startDate != null && currentFilter.endDate != null
+              ? DateTimeRange(
+                  start: currentFilter.startDate!,
+                  end: currentFilter.endDate!,
+                )
+              : null,
     );
 
     if (picked != null) {
-      ref.read(transactionFilterProvider.notifier).update((state) => state.copyWith(
-        startDate: picked.start,
-        endDate: picked.end,
-      ),);
+      ref.read(transactionFilterProvider.notifier).update(
+            (state) => state.copyWith(
+              startDate: picked.start,
+              endDate: picked.end,
+            ),
+          );
     }
   }
 
@@ -104,13 +128,13 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     final transactionsAsync = ref.watch(transactionsProvider);
     final categoryMapAsync = ref.watch(categoryMapProvider);
     final accountMapAsync = ref.watch(accountMapProvider);
-    final currency = ref.watch(currencyCodeProvider.notifier).currentCurrencySymbol;
+    final currencyCode = ref.watch(currencyCodeProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: _isInSelectionMode
             ? Text('${_selectedTransactionIds.length} Selected')
-            : (_isSearching 
+            : (_isSearching
                 ? TextField(
                     controller: _searchController,
                     autofocus: true,
@@ -123,14 +147,36 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                 : const Text('Transactions')),
         actions: [
           if (_isInSelectionMode) ...[
-            IconButton(icon: const Icon(Icons.cancel), onPressed: _toggleSelectionMode, tooltip: 'Cancel selection'),
-            IconButton(icon: const Icon(Icons.delete), onPressed: _deleteSelectedTransactions, tooltip: 'Delete selected transactions'),
+            IconButton(
+              icon: const Icon(Icons.cancel),
+              onPressed: _toggleSelectionMode,
+              tooltip: 'Cancel selection',
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete),
+              onPressed: _deleteSelectedTransactions,
+              tooltip: 'Delete selected transactions',
+            ),
           ] else if (_isSearching) ...[
             IconButton(icon: const Icon(Icons.close), onPressed: _clearSearch),
           ] else ...[
-            IconButton(icon: const Icon(Icons.search), onPressed: () => setState(() => _isSearching = true)),
             IconButton(
-              icon: const Icon(Icons.filter_list),
+              icon: const Icon(Icons.search),
+              onPressed: () => setState(() => _isSearching = true),
+            ),
+            IconButton(
+              icon: Consumer(
+                builder: (context, ref, child) {
+                  final filter = ref.watch(transactionFilterProvider);
+                  final isActive = filter.hasActiveFilters;
+
+                  return Badge(
+                    label: Text('${filter.activeFilterCount}'),
+                    isLabelVisible: isActive,
+                    child: const Icon(Icons.filter_list),
+                  );
+                },
+              ),
               onPressed: _showFilterSheet,
             ),
           ],
@@ -139,12 +185,15 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       body: transactionsAsync.when(
         data: (transactions) {
           if (transactions.isEmpty) {
-             if (_isSearching || ref.watch(transactionFilterProvider).searchQuery != null) {
-               return const Center(child: Text('No transactions found matching your criteria.'));
-             }
-             return const Center(child: Text('No transactions yet.'));
+            if (_isSearching ||
+                ref.watch(transactionFilterProvider).searchQuery != null) {
+              return const Center(
+                child: Text('No transactions found matching your criteria.'),
+              );
+            }
+            return const Center(child: Text('No transactions yet.'));
           }
-          
+
           // Group transactions by date
           final Map<DateTime, List<TransactionItem>> groupedTransactions = {};
           for (final tx in transactions) {
@@ -155,7 +204,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
             groupedTransactions[date]!.add(tx);
           }
 
-          final sortedDates = groupedTransactions.keys.toList()..sort((a, b) => b.compareTo(a));
+          final sortedDates = groupedTransactions.keys.toList()
+            ..sort((a, b) => b.compareTo(a));
 
           return CustomScrollView(
             slivers: [
@@ -178,14 +228,23 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                           Category? category;
                           Account? toAccount;
 
-                          if (categoryMapAsync.value != null && tx.categoryId != null) {
+                          if (categoryMapAsync.value != null &&
+                              tx.categoryId != null) {
                             category = categoryMapAsync.value![tx.categoryId];
                           }
-                          if (accountMapAsync.value != null && tx.toAccountId != null) {
+                          if (accountMapAsync.value != null &&
+                              tx.toAccountId != null) {
                             toAccount = accountMapAsync.value![tx.toAccountId];
                           }
 
-                          return _buildTransactionListTile(context, ref, tx, category, toAccount, currency);
+                          return _buildTransactionListTile(
+                            context,
+                            ref,
+                            tx,
+                            category,
+                            toAccount,
+                            currencyCode,
+                          );
                         },
                         childCount: txs.length,
                       ),
@@ -208,10 +267,14 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     TransactionItem tx,
     Category? category,
     Account? toAccount,
-    String currency,
+    String currencyCode,
   ) {
     final isExpense = tx.type == TransactionType.expense;
-    final color = isExpense ? Theme.of(context).colorScheme.error : (tx.type == TransactionType.income ? Theme.of(context).colorScheme.secondary : Theme.of(context).colorScheme.tertiary);
+    final color = isExpense
+        ? Theme.of(context).colorScheme.error
+        : (tx.type == TransactionType.income
+            ? Theme.of(context).colorScheme.secondary
+            : Theme.of(context).colorScheme.tertiary);
     final isSelected = _selectedTransactionIds.contains(tx.id);
 
     return GestureDetector(
@@ -243,53 +306,85 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           color: Theme.of(context).colorScheme.error,
           alignment: Alignment.centerRight,
           padding: const EdgeInsets.only(right: 20),
-          child: Icon(Icons.delete, color: Theme.of(context).colorScheme.onError),
+          child:
+              Icon(Icons.delete, color: Theme.of(context).colorScheme.onError),
         ),
         confirmDismiss: (_) async {
           return await showDialog(
             context: context,
             builder: (ctx) => AlertDialog(
               title: const Text('Delete Transaction?'),
-              content: Text('Delete this ${Formatters.formatCurrency(tx.amount, symbol: currency)} transaction?'),
+              content: Text(
+                'Delete this ${CurrencyHelper.format(tx.amount, currencyCode: currencyCode)} transaction?',
+              ),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-                TextButton(onPressed: () => Navigator.pop(ctx, true), child: Text('Delete', style: TextStyle(color: Theme.of(context).colorScheme.error))),
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: Text(
+                    'Delete',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ),
               ],
             ),
           );
         },
         onDismissed: (_) async {
-           final messenger = ScaffoldMessenger.of(context);
-           final deletedTx = tx;
-           await ref.read(transactionsProvider.notifier).deleteTransaction(tx.id!);
-           messenger.showSnackBar(
-             SnackBar(
-               content: const Text('Transaction deleted'),
-               action: SnackBarAction(
-                 label: 'Undo',
-                 onPressed: () {
-                   // Re-add as new transaction (original ID is lost but data is preserved)
-                   unawaited(ref.read(transactionsProvider.notifier).addTransaction(deletedTx.copyWith(id: null)));
-                 },
-               ),
-             ),
-           );
+          final messenger = ScaffoldMessenger.of(context);
+          final deletedTx = tx;
+          await ref
+              .read(transactionsProvider.notifier)
+              .deleteTransaction(tx.id!);
+          messenger.showSnackBar(
+            SnackBar(
+              content: const Text('Transaction deleted'),
+              action: SnackBarAction(
+                label: 'Undo',
+                onPressed: () {
+                  // Re-add as new transaction (original ID is lost but data is preserved)
+                  unawaited(
+                    ref
+                        .read(transactionsProvider.notifier)
+                        .addTransaction(deletedTx.copyWith(id: null)),
+                  );
+                },
+              ),
+            ),
+          );
         },
         child: DecoratedBox(
           decoration: BoxDecoration(
-            color: isSelected ? Theme.of(context).colorScheme.primaryContainer.withAlpha((0.3 * 255).round()) : Theme.of(context).cardColor, // Highlight selected
+            color: isSelected
+                ? Theme.of(context)
+                    .colorScheme
+                    .primaryContainer
+                    .withAlpha((0.3 * 255).round())
+                : Theme.of(context).cardColor, // Highlight selected
             border: Border(
               left: BorderSide(
-                color: category != null ? Color(category.color) : _getColor(context, tx.type),
+                color: category != null
+                    ? Color(category.color)
+                    : _getColor(context, tx.type),
                 width: 5,
               ),
             ),
           ),
-          child: Theme( // Wrap with Theme to customize ExpansionTile colors if needed
+          child: Theme(
+            // Wrap with Theme to customize ExpansionTile colors if needed
             data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
             child: ExpansionTile(
-              key: PageStorageKey('expansion_tile_${tx.id}'), // Keep expansion state across rebuilds
-              tilePadding: const EdgeInsets.symmetric(horizontal: AppConstants.defaultPadding),
+              key: PageStorageKey(
+                'expansion_tile_${tx.id}',
+              ), // Keep expansion state across rebuilds
+              tilePadding: const EdgeInsets.symmetric(
+                horizontal: AppConstants.defaultPadding,
+              ),
               leading: _isInSelectionMode
                   ? Checkbox(
                       value: isSelected,
@@ -306,24 +401,30 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                   : CircleAvatar(
                       backgroundColor: color.withAlpha(26),
                       child: Icon(
-                        category != null ? getIconFromCodePoint(category.iconCodePoint) : _getIcon(tx.type),
-                        color: category != null ? Color(category.color) : _getColor(context, tx.type),
+                        category != null
+                            ? getIconFromCodePoint(category.iconCodePoint)
+                            : _getIcon(tx.type),
+                        color: category != null
+                            ? Color(category.color)
+                            : _getColor(context, tx.type),
                         size: 20,
                       ),
                     ),
               title: Text(
-                tx.note?.isNotEmpty == true ? tx.note! : (category?.name ?? 'Untitled'),
+                tx.note?.isNotEmpty == true
+                    ? tx.note!
+                    : (category?.name ?? 'Untitled'),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(fontWeight: FontWeight.w500),
               ),
               subtitle: Text(
                 tx.type == TransactionType.transfer
-                  ? 'Transfer to ${toAccount?.name ?? 'Unknown Account'}'
-                  : (category?.name ?? 'Uncategorized'),
+                    ? 'Transfer to ${toAccount?.name ?? 'Unknown Account'}'
+                    : (category?.name ?? 'Uncategorized'),
               ),
               trailing: Text(
-                '${tx.type == TransactionType.expense || tx.type == TransactionType.transfer ? "-" : "+"}${Formatters.formatCurrency(tx.amount, symbol: currency)}',
+                '${tx.type == TransactionType.expense || tx.type == TransactionType.transfer ? "-" : "+"}${CurrencyHelper.format(tx.amount, currencyCode: currencyCode)}',
                 style: TextStyle(
                   color: _getColor(context, tx.type),
                   fontWeight: FontWeight.bold,
@@ -331,7 +432,10 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               ),
               children: [
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: AppConstants.defaultPadding, vertical: AppConstants.smallPadding),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppConstants.defaultPadding,
+                    vertical: AppConstants.smallPadding,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -339,7 +443,9 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                         Text('Note: ${tx.note!}'),
                         const SizedBox(height: AppConstants.smallPadding),
                       ],
-                      Text('Account: ${ref.watch(accountMapProvider).value?[tx.accountId]?.name ?? 'Unknown'}'),
+                      Text(
+                        'Account: ${ref.watch(accountMapProvider).value?[tx.accountId]?.name ?? 'Unknown'}',
+                      ),
                       const SizedBox(height: AppConstants.smallPadding),
                       if (tx.type == TransactionType.transfer)
                         Text('To Account: ${toAccount?.name ?? 'Unknown'}')
@@ -354,7 +460,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                             final navigator = Navigator.of(context);
                             await navigator.push(
                               MaterialPageRoute(
-                                builder: (_) => AddTransactionScreen(transaction: tx),
+                                builder: (_) =>
+                                    AddTransactionScreen(transaction: tx),
                                 fullscreenDialog: true,
                               ),
                             );
@@ -390,25 +497,38 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   }
 
   IconData _getIcon(TransactionType type) {
-     switch (type) {
-      case TransactionType.income: return Icons.arrow_downward;
-      case TransactionType.expense: return Icons.arrow_upward;
-      case TransactionType.transfer: return Icons.swap_horiz;
+    switch (type) {
+      case TransactionType.income:
+        return Icons.arrow_downward;
+      case TransactionType.expense:
+        return Icons.arrow_upward;
+      case TransactionType.transfer:
+        return Icons.swap_horiz;
     }
   }
 }
 
-class _SliverDateHeaderDelegate extends SliverPersistentHeaderDelegate { // Pass context to access theme
+class _SliverDateHeaderDelegate extends SliverPersistentHeaderDelegate {
+  // Pass context to access theme
 
   const _SliverDateHeaderDelegate({required this.date, required this.context});
   final DateTime date;
   final BuildContext context;
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
     return Container(
-      color: Theme.of(context).colorScheme.surface, // Use theme surface color for header background
-      padding: const EdgeInsets.symmetric(horizontal: AppConstants.defaultPadding, vertical: AppConstants.smallPadding),
+      color: Theme.of(context)
+          .colorScheme
+          .surface, // Use theme surface color for header background
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppConstants.defaultPadding,
+        vertical: AppConstants.smallPadding,
+      ),
       alignment: Alignment.centerLeft,
       child: Text(
         Formatters.formatDate(date),

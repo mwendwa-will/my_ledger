@@ -4,7 +4,7 @@ import 'package:my_ledger/utils/icon_helper.dart';
 import '../../providers/account_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../utils/constants.dart';
-import '../../utils/formatters.dart';
+import '../../utils/currency_helper.dart';
 import 'add_account_screen.dart';
 
 class AccountsScreen extends ConsumerWidget {
@@ -13,7 +13,7 @@ class AccountsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final accountsAsync = ref.watch(accountsProvider);
-    final currency = ref.watch(currencySymbolProvider);
+    final currencyCode = ref.watch(currencyCodeProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -114,7 +114,7 @@ class AccountsScreen extends ConsumerWidget {
                     title: Text(account.name, style: const TextStyle(fontWeight: FontWeight.bold)),
                     subtitle: Text(account.type.name.toUpperCase()), // Simplified enum display
                       trailing: Text(
-                      Formatters.formatCurrency(account.currentBalance, symbol: currency),
+                      CurrencyHelper.format(account.currentBalance, currencyCode: currencyCode),
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,

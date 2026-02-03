@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import '../utils/constants.dart';
+import '../utils/currency_helper.dart';
 
 class Numpad extends StatelessWidget {
 
   const Numpad({
     super.key,
     required this.onKeyPressed,
-    required this.currencySymbol,
+    required this.currencyCode,
   });
   final Function(String) onKeyPressed;
-  final String currencySymbol;
+  final String currencyCode;
 
   Widget _buildButton(BuildContext context, String text, {VoidCallback? onPressed, bool isAccent = false, String? tooltip}) {
     return Expanded(
@@ -48,10 +49,10 @@ class Numpad extends StatelessWidget {
         // Quick amount buttons
         Row(
           children: [
-            _buildButton(context, '${currencySymbol}5', onPressed: () => onKeyPressed('5'), tooltip: 'Quick add 5 $currencySymbol'),
-            _buildButton(context, '${currencySymbol}10', onPressed: () => onKeyPressed('10'), tooltip: 'Quick add 10 $currencySymbol'),
-            _buildButton(context, '${currencySymbol}25', onPressed: () => onKeyPressed('25'), tooltip: 'Quick add 25 $currencySymbol'),
-            _buildButton(context, '${currencySymbol}50', onPressed: () => onKeyPressed('50'), tooltip: 'Quick add 50 $currencySymbol'),
+            _buildButton(context, CurrencyHelper.format(5, currencyCode: currencyCode, decimalDigits: 0), onPressed: () => onKeyPressed('5'), tooltip: 'Quick add 5'),
+            _buildButton(context, CurrencyHelper.format(10, currencyCode: currencyCode, decimalDigits: 0), onPressed: () => onKeyPressed('10'), tooltip: 'Quick add 10'),
+            _buildButton(context, CurrencyHelper.format(25, currencyCode: currencyCode, decimalDigits: 0), onPressed: () => onKeyPressed('25'), tooltip: 'Quick add 25'),
+            _buildButton(context, CurrencyHelper.format(50, currencyCode: currencyCode, decimalDigits: 0), onPressed: () => onKeyPressed('50'), tooltip: 'Quick add 50'),
           ],
         ),
         // Operator row

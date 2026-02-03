@@ -11,6 +11,7 @@ import '../../providers/category_provider.dart'; // Import category provider
 import '../../providers/dashboard_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../utils/constants.dart';
+import '../../utils/currency_helper.dart'; // Import
 import '../../utils/formatters.dart';
 import '../settings/settings_screen.dart';
 import '../../utils/icon_helper.dart'; // Import icon helper
@@ -33,7 +34,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Widget build(BuildContext context) {
     final dashboardAsync = ref.watch(dashboardProvider);
     final totalBalance = ref.watch(totalBalanceProvider);
-    final currency = ref.watch(currencyCodeProvider.notifier).currentCurrencySymbol;
+    final currencyCode = ref.watch(currencyCodeProvider); // Watch code instead of symbol
 
     return Scaffold(
       appBar: AppBar(
@@ -60,12 +61,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Net Worth Card
-              _buildNetWorthCard(context, totalBalance, currency),
+              _buildNetWorthCard(context, totalBalance, currencyCode),
               const SizedBox(height: 16),
 
               // Summary Cards
               dashboardAsync.when(
-                data: (data) => _buildSummaryCards(context, data, currency),
+                data: (data) => _buildSummaryCards(context, data, currencyCode),
                 loading: () => const SizedBox.shrink(),
                 error: (err, stack) => const SizedBox.shrink(),
               ),
@@ -81,7 +82,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
               // Budget Categories
               dashboardAsync.when(
-                data: (data) => _buildBudgetCategories(context, ref, data, currency),
+                data: (data) => _buildBudgetCategories(context, ref, data, currencyCode),
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (err, stack) => Text('Error: $err'),
               ),
@@ -99,7 +100,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 data: (data) => _buildRecentTransactions(
                   context,
                   data,
-                  currency,
+                  currencyCode,
                   ref.watch(categoryMapProvider),
                   ref.watch(accountsProvider),
                 ),
@@ -113,7 +114,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  Widget _buildNetWorthCard(BuildContext context, double balance, String currency) {
+  Widget _buildNetWorthCard(BuildContext context, double balance, String currencyCode) {
     return Card(
       color: Theme.of(context).colorScheme.primary,
       child: Padding(
@@ -127,7 +128,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              Formatters.formatCurrency(balance, symbol: currency),
+              CurrencyHelper.format(balance, currencyCode: currencyCode),
               style: Theme.of(context).textTheme.displaySmall?.copyWith(
                 color: Theme.of(context).colorScheme.onPrimary,
                 fontWeight: FontWeight.bold,
@@ -140,7 +141,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  Widget _buildSummaryCards(BuildContext context, DashboardData data, String currency) {
+  Widget _buildSummaryCards(BuildContext context, DashboardData data, String currencyCode) {
     return Row(
       children: [
         Expanded(
@@ -150,7 +151,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             data.income,
             Theme.of(context).colorScheme.secondary,
             Icons.arrow_downward,
-            currency,
+            currencyCode,
             previousAmount: data.previousMonthIncome,
           ),
         ),
@@ -162,7 +163,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             data.expense,
             Theme.of(context).colorScheme.error,
             Icons.arrow_upward,
-            currency,
+            currencyCode,
             previousAmount: data.previousMonthExpense,
           ),
         ),
@@ -176,7 +177,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     double amount, 
     Color color, 
     IconData icon, 
-    String currency,
+    String currencyCode,
     {double? previousAmount,} // New optional parameter
   ) {
     IconData trendIcon = Icons.trending_flat;
@@ -219,7 +220,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            Formatters.formatCurrency(amount, symbol: currency),
+            CurrencyHelper.format(amount, currencyCode: currencyCode),
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
               color: color,
               fontSize: 18,
@@ -403,7 +404,7 @@ SemanticsService.sendAnnouncement(
       error: (err, stack) => Text('Error: $err'),
     );
   }
-  Widget _buildBudgetCategories(BuildContext context, WidgetRef ref, DashboardData data, String currency) {
+  Widget _buildBudgetCategories(BuildContext context, WidgetRef ref, DashboardData data, String currencyCode) {
     final categoryMapAsync = ref.watch(categoryMapProvider);
 
     return categoryMapAsync.when(
@@ -493,7 +494,7 @@ SemanticsService.sendAnnouncement(
                         ),
                         const SizedBox(height: AppConstants.smallPadding),
                         Text(
-                          '${Formatters.formatCurrency(remaining, symbol: currency)} left',
+                          '${CurrencyHelper.format(remaining, currencyCode: currencyCode)} left',
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: remaining < 0 ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.secondary,
                           ),
@@ -515,7 +516,7 @@ SemanticsService.sendAnnouncement(
   Widget _buildRecentTransactions(
     BuildContext context, 
     DashboardData data, 
-    String currency,
+    String currencyCode,
     AsyncValue<Map<int, Category>> categoryMapAsync,
     AsyncValue<List<Account>> accountsAsync,
   ) {
@@ -548,7 +549,7 @@ SemanticsService.sendAnnouncement(
         }) ?? {};
 
         final String transactionLabel = 
-          '${tx.type.name} transaction of ${Formatters.formatCurrency(tx.amount, symbol: currency)}. '
+          '${tx.type.name} transaction of ${CurrencyHelper.format(tx.amount, currencyCode: currencyCode)}. '
           'Category: ${categoryMapAsync.value?[tx.categoryId]?.name ?? 'Uncategorized'}. '
           'Account: ${accountsMap[tx.accountId]?.name ?? 'Unknown'}. '
           'Date: ${Formatters.formatShortDate(tx.date)}. '
@@ -570,7 +571,7 @@ SemanticsService.sendAnnouncement(
               title: Text(tx.note?.isNotEmpty == true ? tx.note! : 'Transaction'),
               subtitle: Text(Formatters.formatShortDate(tx.date)),
               trailing: Text(
-                '${isExpense ? "-" : "+"}${Formatters.formatCurrency(tx.amount, symbol: currency)}',
+                '${isExpense ? "-" : "+"}${CurrencyHelper.format(tx.amount, currencyCode: currencyCode)}',
                 style: TextStyle(
                   color: color,
                   fontWeight: FontWeight.bold,

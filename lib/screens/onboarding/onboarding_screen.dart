@@ -150,6 +150,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                         initialCurrencyCode: _selectedCurrencyCode,
                       ),
                       AddFirstAccountScreen(
+                        selectedCurrencyCode: _selectedCurrencyCode,
                         onAccountNameChanged: (name) {
                           WidgetsBinding.instance.addPostFrameCallback((_) {
                             if (!mounted) return;

@@ -399,6 +399,14 @@ class DatabaseService {
     return count ?? 0;
   }
 
+  Future<int> getTotalTransactionCount() async {
+    final db = await instance.database;
+    final count = Sqflite.firstIntValue(
+      await db.rawQuery('SELECT COUNT(*) FROM transactions'),
+    );
+    return count ?? 0;
+  }
+
   // --- TRANSACTIONS ---
 
   Future<int> createTransaction(TransactionItem transaction) async {
@@ -467,9 +475,14 @@ class DatabaseService {
       args.add(accountId);
     }
     if (searchQuery != null && searchQuery.isNotEmpty) {
-      whereClause += ' AND (note LIKE ? OR amount LIKE ?)'; // Simple search
-      args.add('%$searchQuery%');
-      args.add('%$searchQuery%');
+      whereClause += ''' AND (
+        note LIKE ? OR 
+        CAST(amount AS TEXT) LIKE ? OR
+        category_id IN (SELECT id FROM categories WHERE name LIKE ?) OR
+        account_id IN (SELECT id FROM accounts WHERE name LIKE ?)
+      )''';
+      final searchPattern = '%$searchQuery%';
+      args.addAll([searchPattern, searchPattern, searchPattern, searchPattern]);
     }
 
     final result = await db.query(
@@ -477,6 +490,92 @@ class DatabaseService {
       where: whereClause,
       whereArgs: args,
       orderBy: 'date DESC, id DESC',
+      limit: limit,
+      offset: offset,
+    );
+
+    return result.map((json) => TransactionItem.fromMap(json)).toList();
+  }
+
+  /// Enhanced transaction query with advanced filtering
+  Future<List<TransactionItem>> getTransactionsFiltered({
+    DateTime? startDate,
+    DateTime? endDate,
+    double? minAmount,
+    double? maxAmount,
+    List<int>? categoryIds,
+    List<int>? accountIds,
+    List<int>? transactionTypes,
+    String? searchQuery,
+    String orderBy = 'date DESC, id DESC',
+    int limit = 100,
+    int offset = 0,
+  }) async {
+    final db = await instance.database;
+
+    String whereClause = '1=1';
+    final List<dynamic> args = [];
+
+    // Date range
+    if (startDate != null) {
+      whereClause += ' AND date >= ?';
+      args.add(startDate.toIso8601String());
+    }
+    if (endDate != null) {
+      whereClause += ' AND date <= ?';
+      args.add(endDate.toIso8601String());
+    }
+
+    // Amount range
+    if (minAmount != null) {
+      whereClause += ' AND amount >= ?';
+      args.add(minAmount);
+    }
+    if (maxAmount != null) {
+      whereClause += ' AND amount <= ?';
+      args.add(maxAmount);
+    }
+
+    // Multiple categories
+    if (categoryIds != null && categoryIds.isNotEmpty) {
+      final placeholders = List.filled(categoryIds.length, '?').join(',');
+      whereClause += ' AND category_id IN ($placeholders)';
+      args.addAll(categoryIds);
+    }
+
+    // Multiple accounts
+    if (accountIds != null && accountIds.isNotEmpty) {
+      final placeholders = List.filled(accountIds.length, '?').join(',');
+      whereClause +=
+          ' AND (account_id IN ($placeholders) OR to_account_id IN ($placeholders))';
+      args.addAll(accountIds);
+      args.addAll(accountIds);
+    }
+
+    // Transaction types
+    if (transactionTypes != null && transactionTypes.isNotEmpty) {
+      final placeholders = List.filled(transactionTypes.length, '?').join(',');
+      whereClause += ' AND type IN ($placeholders)';
+      args.addAll(transactionTypes);
+    }
+
+    // Enhanced search
+    if (searchQuery != null && searchQuery.isNotEmpty) {
+      whereClause += ''' AND (
+        note LIKE ? OR 
+        CAST(amount AS TEXT) LIKE ? OR
+        category_id IN (SELECT id FROM categories WHERE name LIKE ?) OR
+        account_id IN (SELECT id FROM accounts WHERE name LIKE ?)
+      )''';
+      final searchPattern = '%$searchQuery%';
+      args.addAll([searchPattern, searchPattern, searchPattern, searchPattern]);
+    }
+
+    final result = await db.query(
+      'transactions',
+      where: whereClause,
+      whereArgs: args,
+      orderBy: orderBy,
       limit: limit,
       offset: offset,
     );

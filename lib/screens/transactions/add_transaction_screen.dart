@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:flutter/semantics.dart';
 import '../../providers/category_provider.dart';
+import '../../utils/currency_helper.dart'; // Added import
 import '../../utils/icon_helper.dart';
 import '../../utils/analytics.dart';
 import '../../utils/strings.dart';
@@ -329,7 +330,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         Analytics.logEvent('transaction_add');
         await ref
             .read(transactionsProvider.notifier)
-            .addTransaction(newTransaction);
+            .addTransaction(newTransaction, context: context);
       }
       if (mounted) {
         Navigator.pop(context);
@@ -479,7 +480,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     );
   }
 
-  Widget _buildBalancePreview(String currencySymbol) {
+  Widget _buildBalancePreview(String currencyCode) {
     if (_selectedAccount == null) return const SizedBox.shrink();
 
     return Padding(
@@ -490,7 +491,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         child: BalancePreviewCard(
           currentBalance: _selectedAccount!.currentBalance,
           newBalance: _currentBalancePreview,
-          currencySymbol: currencySymbol,
+          currencyCode: currencyCode,
           accountName: _selectedAccount!.name,
         ),
       ),
@@ -714,7 +715,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     );
   }
 
-  Widget _buildTransactionPreview(String currencySymbol) {
+  Widget _buildTransactionPreview(String currencyCode) {
     if (!_isSaveEnabled()) return const SizedBox.shrink();
 
     final amount = ExpressionParser.tryParse(_amountController.text) ?? 0.0;
@@ -727,7 +728,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
         child: TransactionPreviewCard(
           type: _selectedType,
           amount: amount,
-          currencySymbol: currencySymbol,
+          currencyCode: currencyCode,
           date: _selectedDate,
           accountName: _selectedAccount?.name,
           toAccountName: _selectedToAccount?.name,
@@ -741,8 +742,8 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final currencySymbol =
-        ref.watch(currencyCodeProvider.notifier).currentCurrencySymbol;
+    final currencyCode = ref.watch(currencyCodeProvider);
+    final currencySymbol = CurrencyHelper.getSymbol(currencyCode);
 
     return SafeArea(
       child: Column(
@@ -765,11 +766,11 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                     const SizedBox(height: 16),
                     _buildAmountAndDateRow(currencySymbol),
                     _buildExpressionPreview(currencySymbol),
-                    _buildBalancePreview(currencySymbol),
+                    _buildBalancePreview(currencyCode),
                     const SizedBox(height: 8),
                     Numpad(
                       onKeyPressed: _onNumpadKeyPressed,
-                      currencySymbol: currencySymbol,
+                      currencyCode: currencyCode,
                     ),
                     const SizedBox(height: 16),
                     _buildAccountSection(),
@@ -778,7 +779,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
                     const SizedBox(height: 16),
                     _buildNoteField(),
                     const SizedBox(height: 16),
-                    _buildTransactionPreview(currencySymbol),
+                    _buildTransactionPreview(currencyCode),
                     SizedBox(
                       height: 80 + MediaQuery.of(context).viewInsets.bottom,
                     ),

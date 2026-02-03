@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/enums.dart';
+import '../utils/currency_helper.dart';
 
 /// Summary card showing all transaction details before saving
 class TransactionPreviewCard extends StatelessWidget {
@@ -7,7 +8,7 @@ class TransactionPreviewCard extends StatelessWidget {
     super.key,
     required this.type,
     required this.amount,
-    required this.currencySymbol,
+    required this.currencyCode,
     required this.date,
     this.accountName,
     this.toAccountName,
@@ -18,7 +19,7 @@ class TransactionPreviewCard extends StatelessWidget {
 
   final TransactionType type;
   final double amount;
-  final String currencySymbol;
+  final String currencyCode;
   final DateTime date;
   final String? accountName;
   final String? toAccountName;
@@ -86,7 +87,7 @@ class TransactionPreviewCard extends StatelessWidget {
             _buildPreviewRow(
               context,
               'Amount',
-              '$currencySymbol${amount.toStringAsFixed(2)}',
+              CurrencyHelper.format(amount, currencyCode: currencyCode),
               isBold: true,
             ),
             if (accountName != null)
@@ -105,7 +106,7 @@ class TransactionPreviewCard extends StatelessWidget {
               _buildPreviewRow(
                 context,
                 'New Balance',
-                '$currencySymbol${newBalance!.toStringAsFixed(2)}',
+                CurrencyHelper.format(newBalance!, currencyCode: currencyCode),
                 isBold: true,
               ),
             ],

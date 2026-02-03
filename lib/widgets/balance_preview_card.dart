@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/currency_helper.dart';
 
 /// Animated balance preview showing current → new balance with color-coded arrows
 class BalancePreviewCard extends StatelessWidget {
@@ -6,13 +7,13 @@ class BalancePreviewCard extends StatelessWidget {
     super.key,
     required this.currentBalance,
     required this.newBalance,
-    required this.currencySymbol,
+    required this.currencyCode,
     this.accountName,
   });
 
   final double currentBalance;
   final double newBalance;
-  final String currencySymbol;
+  final String currencyCode;
   final String? accountName;
 
   @override
@@ -61,7 +62,7 @@ class BalancePreviewCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '$currencySymbol${currentBalance.toStringAsFixed(2)}',
+                  CurrencyHelper.format(currentBalance, currencyCode: currencyCode),
                   style: theme.textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
@@ -90,7 +91,7 @@ class BalancePreviewCard extends StatelessWidget {
                   tween: Tween(begin: currentBalance, end: newBalance),
                   builder: (context, value, child) {
                     return Text(
-                      '$currencySymbol${value.toStringAsFixed(2)}',
+                      CurrencyHelper.format(value, currencyCode: currencyCode),
                       style: theme.textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                         color: balanceColor,
@@ -114,13 +115,13 @@ class TransferBalancePreview extends StatelessWidget {
     required this.fromAccount,
     required this.toAccount,
     required this.amount,
-    required this.currencySymbol,
+    required this.currencyCode,
   });
 
   final String fromAccount;
   final String toAccount;
   final double amount;
-  final String currencySymbol;
+  final String currencyCode;
 
   @override
   Widget build(BuildContext context) {
@@ -176,7 +177,7 @@ class TransferBalancePreview extends StatelessWidget {
             ),
             const SizedBox(width: 4),
             Text(
-              '$currencySymbol${amount.abs().toStringAsFixed(2)}',
+              CurrencyHelper.format(amount.abs(), currencyCode: currencyCode),
               style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w600,
                 color: color,

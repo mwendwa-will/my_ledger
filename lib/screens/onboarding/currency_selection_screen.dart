@@ -1,3 +1,4 @@
+import 'package:currency_picker/currency_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart'; // Keep for existing ref.watch if needed, but not for direct set.
 
@@ -16,20 +17,27 @@ class CurrencySelectionScreen extends ConsumerStatefulWidget {
 }
 
 class _CurrencySelectionScreenState extends ConsumerState<CurrencySelectionScreen> {
-  final List<Map<String, String>> _currencies = [
-    {'name': 'US Dollar', 'symbol': r'$', 'code': 'USD'},
-    {'name': 'Euro', 'symbol': '€', 'code': 'EUR'},
-    {'name': 'British Pound', 'symbol': '£', 'code': 'GBP'},
-    {'name': 'Japanese Yen', 'symbol': '¥', 'code': 'JPY'},
-    {'name': 'Indian Rupee', 'symbol': '₹', 'code': 'INR'},
-  ];
-
   late String _selectedCurrencyCode;
 
   @override
   void initState() {
     super.initState();
     _selectedCurrencyCode = widget.initialCurrencyCode;
+  }
+
+  void _presentCurrencyPicker() {
+    showCurrencyPicker(
+      context: context,
+      showFlag: true,
+      showCurrencyName: true,
+      showCurrencyCode: true,
+      onSelect: (Currency currency) {
+        setState(() {
+          _selectedCurrencyCode = currency.code;
+        });
+        widget.onCurrencySelected(currency.code);
+      },
+    );
   }
 
   @override
@@ -47,32 +55,53 @@ class _CurrencySelectionScreenState extends ConsumerState<CurrencySelectionScree
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 40),
-            Expanded(
-              child: ListView.builder(
-                  itemCount: _currencies.length,
-                  itemBuilder: (context, index) {
-                    final currency = _currencies[index];
-                    final code = currency['code']!;
-                    return Card(
-                      child: ListTile(
-                        title: Text(currency['name']!),
-                        subtitle: Text(currency['code']!),
-                        trailing: _selectedCurrencyCode == code ? const Icon(Icons.check) : null,
-                        leading: Text(
-                          currency['symbol']!,
-                          style: const TextStyle(fontSize: 24),
-                        ),
-                        onTap: () {
-                          setState(() {
-                            _selectedCurrencyCode = code;
-                          });
-                          widget.onCurrencySelected(code);
-                        },
-                      ),
-                    );
-                  },
+            
+            // Selected Currency Display
+            InkWell(
+              onTap: _presentCurrencyPicker,
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.primary,
+                    width: 2,
+                  ),
                 ),
+                child: Column(
+                  children: [
+                    Text(
+                      _selectedCurrencyCode,
+                      style: Theme.of(context).textTheme.displayMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onPrimaryContainer,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Tap to change',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onPrimaryContainer.withAlpha(179),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
+            
+            const Spacer(),
+            
+            ElevatedButton.icon(
+              onPressed: _presentCurrencyPicker, 
+              icon: const Icon(Icons.search),
+              label: const Text('Search Currencies'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.all(16),
+              ),
+            ),
+            const Spacer(),
           ],
         ),
       ),
