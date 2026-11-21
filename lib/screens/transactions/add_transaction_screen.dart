@@ -17,6 +17,7 @@ import '../../models/transaction_item.dart';
 import '../../providers/account_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/transaction_provider.dart';
+import '../../services/database_service.dart';
 
 import '../../widgets/category_selector.dart';
 import '../../widgets/numpad.dart';
@@ -60,12 +61,16 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
   Timer? _balancePreviewDebounce;
   double? _lastAnnouncedBalance;
   late FocusNode _amountFocusNode;
+  late final VoidCallback _noteListener;
 
   @override
   void initState() {
     super.initState();
     _amountController.addListener(_updateBalancePreview);
-    _noteController.addListener(() => setState(() {}));
+    _noteListener = () {
+      if (mounted) setState(() {});
+    };
+    _noteController.addListener(_noteListener);
     _amountFocusNode = FocusNode();
 
     // Scroll controller for keyboard dismissal
@@ -97,17 +102,19 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
     _amountController.removeListener(_updateBalancePreview);
     _amountController.dispose();
     _amountFocusNode.dispose();
-    _noteController.removeListener(() => setState(() {}));
+    _noteController.removeListener(_noteListener);
     _noteController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
 
   void _initializeDefaultValues() {
+    if (!mounted) return;
     final accountsAsync = ref.read(accountsProvider);
     final categoriesAsync = ref.read(categoriesProvider);
 
     accountsAsync.whenData((accounts) {
+      if (!mounted) return;
       if (accounts.isEmpty) return;
 
       // Restore account from edit mode or use first account
@@ -136,6 +143,7 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
 
     // Restore category from edit mode
     categoriesAsync.whenData((categories) {
+      if (!mounted) return;
       if (categories.isEmpty) return;
       final category = categories.firstWhere(
         (c) => c.id == _editTransactionCategoryId,
@@ -306,10 +314,50 @@ class _AddTransactionScreenState extends ConsumerState<AddTransactionScreen> {
       return;
     }
 
+    var categoryId = _selectedCategory?.id;
+    if (widget.transaction == null &&
+        _selectedType != TransactionType.transfer &&
+        _noteController.text.trim().isNotEmpty) {
+      final suggestedCategoryId =
+          await DatabaseService.instance.suggestCategoryForDescription(
+        _noteController.text,
+        type: _selectedType,
+      );
+      if (!mounted) return;
+      if (suggestedCategoryId != null &&
+          suggestedCategoryId != categoryId) {
+        final categories = await ref.read(categoriesProvider.future);
+        if (!mounted) return;
+        final suggested = categories.where((c) => c.id == suggestedCategoryId);
+        if (suggested.isNotEmpty) {
+          final useSuggestion = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Category suggestion'),
+              content:
+                  Text('Use "${suggested.first.name}" for this transaction?'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Keep selected'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('Use suggestion'),
+                ),
+              ],
+            ),
+          );
+          if (!mounted) return;
+          if (useSuggestion == true) categoryId = suggestedCategoryId;
+        }
+      }
+    }
+
     final newTransaction = TransactionItem(
       id: widget.transaction?.id,
       accountId: _selectedAccount!.id!,
-      categoryId: _selectedCategory?.id,
+      categoryId: categoryId,
       toAccountId: _selectedToAccount?.id,
       amount: finalAmount,
       type: _selectedType,

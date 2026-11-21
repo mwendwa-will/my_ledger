@@ -66,11 +66,13 @@ class _AddFirstAccountScreenState extends State<AddFirstAccountScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Padding(
+      body: Center(
+        child: SingleChildScrollView(
         padding: const EdgeInsets.all(40),
         child: Form(
           key: _formKey,
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -158,6 +160,7 @@ class _AddFirstAccountScreenState extends State<AddFirstAccountScreen> {
             ],
           ),
         ),
+      ),
       ),
     );
   }

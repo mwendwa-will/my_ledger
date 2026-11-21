@@ -1,24 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../providers/settings_provider.dart';
 import '../../../models/category.dart';
 import '../../../models/enums.dart';
 import '../../../utils/constants.dart'; // Import AppConstants
 import '../../../utils/icon_helper.dart';
 
-class CategoryFormModal extends StatefulWidget {
+class CategoryFormModal extends ConsumerStatefulWidget {
 
   const CategoryFormModal({
     super.key,
     this.category,
     this.existingCategoryNames,
+    this.categories = const [],
   });
   final Category? category; // For editing existing category
   final List<String>? existingCategoryNames;
+  final List<Category> categories;
 
   @override
-  State<CategoryFormModal> createState() => _CategoryFormModalState();
+  ConsumerState<CategoryFormModal> createState() => _CategoryFormModalState();
 }
 
-class _CategoryFormModalState extends State<CategoryFormModal> {
+class _CategoryFormModalState extends ConsumerState<CategoryFormModal> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
   late TransactionType _selectedType;
@@ -26,6 +30,7 @@ class _CategoryFormModalState extends State<CategoryFormModal> {
   late IconData _selectedIcon;
   bool _includeInBudgets = false;
   late TextEditingController _budgetAmountController;
+  int? _parentCategoryId;
 
   @override
   void initState() {
@@ -36,6 +41,7 @@ class _CategoryFormModalState extends State<CategoryFormModal> {
     _selectedIcon = widget.category != null ? getIconFromCodePoint(widget.category!.iconCodePoint) : Icons.category;
     _includeInBudgets = widget.category?.monthlyBudgetLimit != null;
     _budgetAmountController = TextEditingController(text: widget.category?.monthlyBudgetLimit?.toString() ?? '');
+    _parentCategoryId = widget.category?.parentId;
   }
 
   @override
@@ -72,7 +78,7 @@ class _CategoryFormModalState extends State<CategoryFormModal> {
                 decoration: InputDecoration(
                   labelText: 'Category Name',
                   hintText: 'e.g., Groceries',
-                  border: OutlineInputBorder(),
+                  border: const OutlineInputBorder(),
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
@@ -104,9 +110,49 @@ class _CategoryFormModalState extends State<CategoryFormModal> {
                   if (value != null) {
                     setState(() {
                       _selectedType = value;
+                      if (_parentCategoryId != null &&
+                          !widget.categories.any(
+                            (candidate) =>
+                                candidate.id == _parentCategoryId &&
+                                candidate.type == value,
+                          )) {
+                        _parentCategoryId = null;
+                      }
                     });
                   }
                 },
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<int?>(
+                initialValue: _parentCategoryId,
+                decoration: const InputDecoration(
+                  labelText: 'Parent category (optional)',
+                  border: OutlineInputBorder(),
+                ),
+                items: [
+                  const DropdownMenuItem<int?>(child: Text('No parent')),
+                  ...widget.categories
+                      .where(
+                        (candidate) =>
+                            !widget.categories.any(
+                              (child) =>
+                                  child.parentId == widget.category?.id &&
+                                  widget.category?.id != null,
+                            ) &&
+                            candidate.parentId == null &&
+                            candidate.id != widget.category?.id &&
+                            candidate.type == _selectedType &&
+                            candidate.id != null,
+                      )
+                      .map(
+                        (candidate) => DropdownMenuItem<int?>(
+                          value: candidate.id,
+                          child: Text(candidate.name),
+                        ),
+                      ),
+                ],
+                onChanged: (value) =>
+                    setState(() => _parentCategoryId = value),
               ),
               const SizedBox(height: 20),
               Text('Icon', style: Theme.of(context).textTheme.titleMedium),
@@ -180,7 +226,7 @@ class _CategoryFormModalState extends State<CategoryFormModal> {
                       labelText: 'Monthly Budget Amount',
                       hintText: 'Optional budget limit',
                       border: OutlineInputBorder(),
-                      prefixText: r'$', // Placeholder currency symbol
+                      prefixText: ref.watch(currencySymbolProvider),
                     ),
                     validator: (value) {
                       if (_includeInBudgets && (value == null || value.isEmpty || double.tryParse(value) == null)) {
@@ -202,6 +248,7 @@ class _CategoryFormModalState extends State<CategoryFormModal> {
                         color: _selectedColor.toARGB32(),
                         iconCodePoint: _selectedIcon.codePoint,
                         monthlyBudgetLimit: _includeInBudgets ? double.parse(_budgetAmountController.text) : null,
+                        parentId: _parentCategoryId,
                       );
                       Navigator.of(context).pop(newCategory);
                     }

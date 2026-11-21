@@ -14,6 +14,8 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Flutter currently requires the legacy AGP DSL via android.newDsl=false.
+@Suppress("DEPRECATION")
 android {
     namespace = "com.purplevin.myledger"
     compileSdk = flutter.compileSdkVersion
@@ -22,10 +24,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
     defaultConfig {
@@ -39,10 +37,12 @@ android {
     signingConfigs {
         // 2. Use create("release") and explicit casting for Kotlin
         create("release") {
-            keyAlias = keystoreProperties["keyAlias"] as String
-            keyPassword = keystoreProperties["keyPassword"] as String
-            storeFile = keystoreProperties["storeFile"]?.let { file(it) }
-            storePassword = keystoreProperties["storePassword"] as String
+            if (keystorePropertiesFile.exists()) {
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+                storeFile = keystoreProperties["storeFile"]?.let { file(it) }
+                storePassword = keystoreProperties["storePassword"] as String
+            }
         }
     }
 
@@ -53,6 +53,12 @@ android {
             
            
         }
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
 }
 

@@ -12,6 +12,8 @@ import '../../services/backup_service.dart';
 import '../support_creator_screen.dart';
 
 import 'categories/categories_screen.dart';
+import 'categories/categorization_rules_screen.dart';
+import '../planning/planning_screen.dart';
 import 'export_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -33,6 +35,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Future<void> _loadBiometricSettings() async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     setState(() {
       _isBiometricEnabled = prefs.getBool('biometric_enabled') ?? false;
     });
@@ -114,6 +117,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             onTap: () {
               Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const CategoriesScreen()),
+              );
+            },
+          ),
+          ListTile(
+            title: const Text('Categorization Rules'),
+            subtitle: const Text('Suggest categories from transaction notes'),
+            leading: const Icon(Icons.rule),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const CategorizationRulesScreen(),
+                ),
+              );
+            },
+          ),
+          ListTile(
+            title: const Text('Goals & Debt Plan'),
+            subtitle: const Text('Track savings goals and payoff estimates'),
+            leading: const Icon(Icons.flag_outlined),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const PlanningScreen()),
               );
             },
           ),

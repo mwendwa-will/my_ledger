@@ -35,19 +35,31 @@ class ExportService {
         DateFormat('yyyy-MM-dd').format(transaction.date),
         _getTypeName(transaction.type),
         transaction.amount.toStringAsFixed(2),
-        accountNames?[transaction.accountId] ?? 'Unknown',
+        _safeSpreadsheetText(accountNames?[transaction.accountId] ?? 'Unknown'),
         transaction.categoryId != null
-            ? (categoryNames?[transaction.categoryId] ?? 'Unknown')
+            ? _safeSpreadsheetText(
+                categoryNames?[transaction.categoryId] ?? 'Unknown',
+              )
             : '',
         transaction.toAccountId != null
-            ? (accountNames?[transaction.toAccountId] ?? 'Unknown')
+            ? _safeSpreadsheetText(
+                accountNames?[transaction.toAccountId] ?? 'Unknown',
+              )
             : '',
-        transaction.note ?? '',
+        _safeSpreadsheetText(transaction.note ?? ''),
         transaction.isReconciled ? 'Yes' : 'No',
       ]);
     }
 
     return const ListToCsvConverter().convert(rows);
+  }
+
+  static String _safeSpreadsheetText(String value) {
+    if (RegExp(r'^[\s\u0000-\u001f\u007f-\u009f\uFEFF]*[=+\-@]')
+        .hasMatch(value)) {
+      return "'$value";
+    }
+    return value;
   }
 
   /// Save CSV to device and return file path

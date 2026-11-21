@@ -6,21 +6,23 @@ import 'utils/constants.dart';
 import 'providers/settings_provider.dart';
 import 'screens/main_screen.dart';
 import 'screens/onboarding/onboarding_screen.dart';
+import 'widgets/biometric_gate.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Check onboarding status
   final prefs = await SharedPreferences.getInstance();
   final isOnboarded = prefs.getBool('is_onboarded') ?? false;
 
-  runApp(ProviderScope(
-    child: MyLedgerApp(isOnboarded: isOnboarded),
-  ),);
+  runApp(
+    ProviderScope(
+      child: MyLedgerApp(isOnboarded: isOnboarded),
+    ),
+  );
 }
 
 class MyLedgerApp extends ConsumerWidget {
-
   const MyLedgerApp({super.key, required this.isOnboarded});
   final bool isOnboarded;
 
@@ -34,7 +36,9 @@ class MyLedgerApp extends ConsumerWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: isDarkMode ? ThemeMode.dark : ThemeMode.light,
-      home: isOnboarded ? const MainScreen() : const OnboardingScreen(),
+      home: isOnboarded
+          ? const BiometricGate(child: MainScreen())
+          : const OnboardingScreen(),
     );
   }
 }

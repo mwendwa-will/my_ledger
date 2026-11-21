@@ -14,12 +14,17 @@ class CurrencyNotifier extends StateNotifier<String> {
     _loadCurrencyCode();
   }
 
+  bool _currencySelected = false;
+
   Future<void> _loadCurrencyCode() async {
     final prefs = await SharedPreferences.getInstance();
-    state = prefs.getString('currency_code') ?? 'USD';
+    if (mounted && !_currencySelected) {
+      state = prefs.getString('currency_code') ?? 'USD';
+    }
   }
 
   Future<void> setCurrencyCode(String code) async {
+    _currencySelected = true;
     state = code;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('currency_code', code);
@@ -30,8 +35,7 @@ class CurrencyNotifier extends StateNotifier<String> {
 
 // Expose current currency symbol for convenience
 final currencySymbolProvider = Provider<String>((ref) {
-  final notifier = ref.watch(currencyCodeProvider.notifier);
-  return notifier.currentCurrencySymbol;
+  return CurrencyHelper.getSymbol(ref.watch(currencyCodeProvider));
 });
 
 // Theme Mode Provider

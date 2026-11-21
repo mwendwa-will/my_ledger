@@ -50,6 +50,7 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
       builder: (context) => CategoryFormModal(
         category: category,
         existingCategoryNames: existingCategoryNames,
+        categories: allCategories,
       ),
     );
 
@@ -329,7 +330,9 @@ class _CategoriesScreenState extends ConsumerState<CategoriesScreen> {
               backgroundColor: Color(category.color),
               child: Icon(getIconFromCodePoint(category.iconCodePoint), color: Theme.of(context).colorScheme.onPrimary),
             ),
-            title: Text(category.name),
+            title: Text(
+              '${category.parentId == null ? '' : '   '}${category.name}',
+            ),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [

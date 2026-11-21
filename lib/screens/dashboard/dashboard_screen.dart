@@ -234,7 +234,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   Widget _buildSpendingByCategoryChart(BuildContext context, WidgetRef ref, DashboardData data) {
     final categoryMapAsync = ref.watch(categoryMapProvider);
-    final currencySymbol = ref.watch(currencyCodeProvider.notifier).currentCurrencySymbol;
+    final currencySymbol = ref.watch(currencySymbolProvider);
 
     return categoryMapAsync.when(
       data: (categoryMap) {

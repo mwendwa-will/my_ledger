@@ -13,6 +13,20 @@ MyLedger is an offline-first personal finance app built with Flutter. It stores 
 - Dark mode (Material 3)
 - Backup & restore database file
 - Optional biometric lock via system biometrics
+- The currency selected during setup or in Settings applies to ledger amounts,
+  charts, budgets, and amount-entry/filter fields. Changing it changes display
+  currency only; it does not convert stored balances or transactions.
+
+## Planning & Reporting
+
+- Zero-based monthly budget planning compares category allocations with available checking, savings, and cash balances. Existing balances include money carried from prior months; the app shows unallocated or over-allocated amounts.
+- Guided budget setup helps allocate money across expense categories.
+- Savings goals track manually entered progress and optional reference accounts/categories.
+- Debt plans estimate payoff timing from manually entered balances, interest rates, minimum payments, and due days. Snowball and avalanche ordering are supported; estimates do not change account balances.
+- Categories support one level of subcategories.
+- On-device categorization rules suggest a category when a new transaction note matches; the user confirms each suggestion.
+- Annual reports summarize income, expenses, category spending, and account activity. Account balances are labeled as current, not historical year-end balances.
+- No bank linking or cloud synchronization is used.
 
 ## Getting Started (Developer)
 
@@ -20,6 +34,13 @@ Prerequisites
 
 - Flutter SDK (recommended 3.10+)
 - A device or emulator (Android / iOS) and platform tooling (Android Studio / Xcode)
+
+Android builds use Gradle 9.1.0, Android Gradle Plugin 9.0.1, Kotlin
+2.3.20, and JDK 17. Keep `android.builtInKotlin=false` and
+`android.newDsl=false` in `android/gradle.properties` for the current
+Flutter/plugin compatibility path.
+Debug builds do not require release signing credentials; release builds still
+require a valid local `android/key.properties` and keystore.
 
 Clone and install
 
@@ -48,12 +69,12 @@ flutter pub get        # fetch packages
 
 The app uses `sqflite` and manages schema migrations in `lib/services/database_service.dart`.
 
-- Migration: In a recent update the database schema was bumped to version `2` to add a `sort_order` column to the `categories` table. On application upgrade the migration code will attempt to alter the table to add the new column with a default of `0`. The migration is written to be safe for existing databases but if you encounter issues you can remove the app data (or delete the `my_ledger.db` file) to recreate the schema.
+- Migrations: Schema version `2` added category ordering; version `3` adds subcategory relationships and local planning/categorization tables. Existing databases are upgraded on app start.
 - Backup: Use the in-app export / import features to move data between devices. When restoring, ensure the DB file matches the expected schema version.
 
 ## Troubleshooting
 
-- "no such column: sort_order" — This indicates an older database without the new column. The app includes an on-upgrade step to add this column; if the upgrade fails, delete or replace the database file to recreate it, or restore from a backed-up `.db` file that includes the column.
+- "no such column: sort_order" or "no such column: parent_id" — This indicates a database that has not been upgraded. Launch the app to run its migrations; retain a backup before manually replacing any database.
 - "Database locked" — Close other app instances or processes that may access the DB; restart the app.
 - Biometrics not available — Ensure platform biometric security is configured on the device.
 

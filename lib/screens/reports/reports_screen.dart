@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../providers/reports_provider.dart';
+import '../../providers/settings_provider.dart';
+import '../../utils/currency_helper.dart';
 import '../../utils/constants.dart';
 import '../../utils/formatters.dart';
 
@@ -13,6 +15,11 @@ class ReportsScreen extends ConsumerWidget {
     final pieDataAsync = ref.watch(expensePieChartProvider);
     final trendDataAsync = ref.watch(trendChartProvider);
     final date = ref.watch(reportMonthProvider);
+    final year = ref.watch(reportYearProvider);
+    final annualSummaryAsync = ref.watch(annualSummaryProvider);
+    final annualAccountsAsync = ref.watch(annualAccountActivityProvider);
+    final annualExpensesAsync = ref.watch(annualExpenseBreakdownProvider);
+    final currency = CurrencyHelper.getSymbol(ref.watch(currencyCodeProvider));
 
     return Scaffold(
       appBar: AppBar(
@@ -23,6 +30,120 @@ class ReportsScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  tooltip: 'Previous year',
+                  icon: const Icon(Icons.chevron_left),
+                  onPressed: () =>
+                      ref.read(reportYearProvider.notifier).state = year - 1,
+                ),
+                Text('Annual overview - $year',
+                    style: Theme.of(context).textTheme.titleLarge,),
+                IconButton(
+                  tooltip: 'Next year',
+                  icon: const Icon(Icons.chevron_right),
+                  onPressed: () =>
+                      ref.read(reportYearProvider.notifier).state = year + 1,
+                ),
+              ],
+            ),
+            annualSummaryAsync.when(
+              data: (summary) => Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Income'),
+                            Text(
+                              Formatters.formatCurrency(
+                                summary['income'] ?? 0,
+                                symbol: currency,
+                              ),
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Expenses'),
+                            Text(
+                              Formatters.formatCurrency(
+                                summary['expense'] ?? 0,
+                                symbol: currency,
+                              ),
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              loading: () => const LinearProgressIndicator(),
+              error: (error, _) => Text('Annual summary error: $error'),
+            ),
+            annualAccountsAsync.when(
+              data: (accounts) => ExpansionTile(
+                title: const Text('Account activity this year'),
+                children: accounts.isEmpty
+                    ? const [ListTile(title: Text('No account activity'))]
+                    : accounts
+                        .map(
+                          (activity) => ListTile(
+                            title: Text(activity.account.name),
+                            subtitle: Text(
+                              'Current balance: ${Formatters.formatCurrency(activity.account.currentBalance, symbol: currency)}',
+                            ),
+                            trailing: Text(
+                              Formatters.formatCurrency(
+                                activity.netActivity,
+                                symbol: currency,
+                              ),
+                            ),
+                          ),
+                        )
+                        .toList(),
+              ),
+              loading: () => const LinearProgressIndicator(),
+              error: (error, _) => Text('Account activity error: $error'),
+            ),
+            annualExpensesAsync.when(
+              data: (expenses) => ExpansionTile(
+                title: const Text('Expenses by category this year'),
+                children: expenses.isEmpty
+                    ? const [ListTile(title: Text('No categorized expenses'))]
+                    : expenses
+                        .map(
+                          (expense) => ListTile(
+                            title: Text(
+                              expense.parentName == null
+                                  ? expense.category.name
+                                  : '${expense.parentName} > ${expense.category.name}',
+                            ),
+                            trailing: Text(
+                              Formatters.formatCurrency(
+                                expense.amount,
+                                symbol: currency,
+                              ),
+                            ),
+                          ),
+                        )
+                        .toList(),
+              ),
+              loading: () => const LinearProgressIndicator(),
+              error: (error, _) => Text('Category report error: $error'),
+            ),
+            const SizedBox(height: 16),
             // Month Selector for Pie Chart
             Row(
               mainAxisAlignment: MainAxisAlignment.center,

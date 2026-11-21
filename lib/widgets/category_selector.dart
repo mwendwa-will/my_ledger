@@ -24,8 +24,10 @@ class CategorySelector extends ConsumerStatefulWidget {
 
 class _CategorySelectorState extends ConsumerState<CategorySelector> {
   Widget _buildCategoryItem(BuildContext context, Category category, bool isSelected) {
+    final displayName =
+        category.parentId == null ? category.name : '> ${category.name}';
     return Semantics(
-      label: '${category.name} category, ${isSelected ? 'selected' : 'not selected'}',
+      label: '$displayName category, ${isSelected ? 'selected' : 'not selected'}',
       selected: isSelected,
       button: true,
       child: GestureDetector(
@@ -43,7 +45,7 @@ class _CategorySelectorState extends ConsumerState<CategorySelector> {
             ),
             const SizedBox(height: 4),
             Text(
-              category.name,
+              displayName,
               style: TextStyle(
                 fontSize: 12,
                 color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface,

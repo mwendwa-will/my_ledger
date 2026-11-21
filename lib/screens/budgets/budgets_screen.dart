@@ -3,10 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/budget_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../models/budget.dart';
+import '../../models/account.dart';
+import '../../models/enums.dart';
+import '../../providers/account_provider.dart';
 import '../../utils/constants.dart';
 import '../../utils/icon_helper.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/gradient_progress_bar.dart'; // Import GradientProgressBar
+import 'guided_budget_screen.dart';
 
 class BudgetsScreen extends ConsumerStatefulWidget {
   const BudgetsScreen({super.key});
@@ -43,38 +47,40 @@ class _BudgetsScreenState extends ConsumerState<BudgetsScreen> with SingleTicker
     
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Set Budget for ${view.category.name}'),
-        content: TextField(
-          controller: controller,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: const InputDecoration(
-            labelText: 'Budget Limit',
-            prefixText: r'$ ',
-            border: OutlineInputBorder(),
+      builder: (ctx) => Consumer(
+        builder: (context, ref, _) => AlertDialog(
+          title: Text('Set Budget for ${view.category.name}'),
+          content: TextField(
+            controller: controller,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(
+              labelText: 'Budget Limit',
+              prefixText: '${ref.watch(currencySymbolProvider)} ',
+              border: const OutlineInputBorder(),
+            ),
+            autofocus: true,
           ),
-          autofocus: true,
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final amount = double.tryParse(controller.text) ?? 0.0;
+                final budget = Budget(
+                  categoryId: view.category.id!,
+                  amount: amount,
+                  month: date.month,
+                  year: date.year,
+                );
+                BudgetNotifier.setBudget(ref, budget);
+                Navigator.pop(ctx);
+              },
+              child: const Text('Save'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              final amount = double.tryParse(controller.text) ?? 0.0;
-              final budget = Budget(
-                categoryId: view.category.id!,
-                amount: amount,
-                month: date.month,
-                year: date.year,
-              );
-              BudgetNotifier.setBudget(ref, budget);
-              Navigator.pop(ctx);
-            },
-            child: const Text('Save'),
-          ),
-        ],
       ),
     );
   }
@@ -82,12 +88,24 @@ class _BudgetsScreenState extends ConsumerState<BudgetsScreen> with SingleTicker
   @override
   Widget build(BuildContext context) {
     final budgetsAsync = ref.watch(budgetsViewProvider);
+    final accountsAsync = ref.watch(accountsProvider);
     final date = ref.watch(budgetMonthProvider);
-    final currency = ref.watch(currencyCodeProvider.notifier).currentCurrencySymbol;
+    final currency = ref.watch(currencySymbolProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Budgets'),
+        actions: [
+          IconButton(
+            tooltip: 'Guided budget setup',
+            icon: const Icon(Icons.assistant_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const GuidedBudgetScreen(),
+              ),
+            ),
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(48),
           child: Padding(
@@ -118,15 +136,14 @@ class _BudgetsScreenState extends ConsumerState<BudgetsScreen> with SingleTicker
       ),
       body: budgetsAsync.when(
         data: (views) {
-          if (views.isEmpty) {
-            return const Center(child: Text('No expense categories found.'));
-          }
-          
           return ListView.builder(
             padding: const EdgeInsets.all(AppConstants.defaultPadding),
-            itemCount: views.length,
+            itemCount: views.length + 1,
             itemBuilder: (context, index) {
-              final view = views[index];
+              if (index == 0) {
+                return _buildZeroBasedSummary(views, accountsAsync, currency);
+              }
+              final view = views[index - 1];
               final progress = view.progress;
               
               List<Color> gradientColors;
@@ -250,6 +267,66 @@ class _BudgetsScreenState extends ConsumerState<BudgetsScreen> with SingleTicker
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, _) => Center(child: Text('Error: $err')),
       ),
+    );
+  }
+
+  Widget _buildZeroBasedSummary(
+    List<BudgetView> views,
+    AsyncValue<List<Account>> accountsAsync,
+    String currency,
+  ) {
+    return accountsAsync.when(
+      data: (accounts) {
+        final available = accounts
+            .where((account) =>
+                account.type == AccountType.checking ||
+                account.type == AccountType.savings ||
+                account.type == AccountType.cash,)
+            .fold<double>(0, (sum, account) => sum + account.currentBalance);
+        final assigned = views.fold<double>(0, (sum, view) {
+          final hasSubcategories = views.any(
+            (child) => child.category.parentId == view.category.id,
+          );
+          return sum + (hasSubcategories ? 0 : view.budgetAmount);
+        });
+        final remaining = available - assigned;
+        return Card(
+          margin: const EdgeInsets.only(bottom: 16),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Zero-based plan - available cash includes carryover',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Available: ${Formatters.formatCurrency(available, symbol: currency)}',
+                ),
+                Text(
+                  'Allocated: ${Formatters.formatCurrency(assigned, symbol: currency)}',
+                ),
+                Text(
+                  remaining >= 0
+                      ? 'Unallocated: ${Formatters.formatCurrency(remaining, symbol: currency)}'
+                      : 'Over-allocated: ${Formatters.formatCurrency(remaining.abs(), symbol: currency)}',
+                  style: TextStyle(
+                    color: remaining < 0
+                        ? Theme.of(context).colorScheme.error
+                        : null,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (views.isEmpty) const Text('No expense categories found.'),
+              ],
+            ),
+          ),
+        );
+      },
+      loading: () => const LinearProgressIndicator(),
+      error: (error, _) => Text('Could not calculate available cash: $error'),
     );
   }
 

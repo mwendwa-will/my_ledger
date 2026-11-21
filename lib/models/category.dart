@@ -1,6 +1,7 @@
 import 'enums.dart';
 
-class Category { // New field for reordering
+class Category {
+  // New field for reordering
 
   Category({
     this.id,
@@ -11,6 +12,7 @@ class Category { // New field for reordering
     this.isArchived = false,
     this.monthlyBudgetLimit,
     this.sortOrder = 0, // Default sort order
+    this.parentId,
   });
 
   factory Category.fromMap(Map<String, dynamic> map) {
@@ -22,7 +24,9 @@ class Category { // New field for reordering
       iconCodePoint: map['icon_code_point'],
       isArchived: map['is_archived'] == 1,
       monthlyBudgetLimit: map['monthly_budget_limit'],
-      sortOrder: map['sort_order'] ?? 0, // Handle existing data without sort_order
+      sortOrder:
+          map['sort_order'] ?? 0, // Handle existing data without sort_order
+      parentId: map['parent_id'],
     );
   }
   final int? id;
@@ -31,8 +35,10 @@ class Category { // New field for reordering
   final int color;
   final int iconCodePoint;
   final bool isArchived;
-  final double? monthlyBudgetLimit; // Optional budget link directly in category for simplicity in v1
+  final double?
+      monthlyBudgetLimit; // Optional budget link directly in category for simplicity in v1
   final int sortOrder;
+  final int? parentId;
 
   Category copyWith({
     int? id,
@@ -43,6 +49,7 @@ class Category { // New field for reordering
     bool? isArchived,
     double? monthlyBudgetLimit,
     int? sortOrder,
+    int? parentId,
   }) {
     return Category(
       id: id ?? this.id,
@@ -53,6 +60,7 @@ class Category { // New field for reordering
       isArchived: isArchived ?? this.isArchived,
       monthlyBudgetLimit: monthlyBudgetLimit ?? this.monthlyBudgetLimit,
       sortOrder: sortOrder ?? this.sortOrder,
+      parentId: parentId ?? this.parentId,
     );
   }
 
@@ -66,7 +74,7 @@ class Category { // New field for reordering
       'is_archived': isArchived ? 1 : 0,
       'monthly_budget_limit': monthlyBudgetLimit,
       'sort_order': sortOrder,
+      'parent_id': parentId,
     };
   }
 }
-

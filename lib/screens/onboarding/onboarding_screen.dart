@@ -25,6 +25,7 @@ class OnboardingScreen extends ConsumerStatefulWidget {
 
 class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final PageController _pageController = PageController();
+  late final VoidCallback _pageListener;
   double _currentPage = 0;
   static const int numPages = 7; // Welcome + 3 Value Props + 3 Setup Steps
 
@@ -39,22 +40,33 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   @override
   void initState() {
     super.initState();
-    _pageController.addListener(() {
+    _pageListener = () {
+      if (!mounted) return;
       setState(() {
         _currentPage = _pageController.page ?? 0;
       });
-    });
+    };
+    _pageController.addListener(_pageListener);
   }
 
   Future<void> _showSuccessAnimation() async {
     await SemanticsService.sendAnnouncement(WidgetsBinding.instance.platformDispatcher.views.first, 'Setup Complete!', TextDirection.ltr); // Announce completion
+    if (!mounted) return;
     setState(() {
       _showSuccessOverlay = true;
     });
     await Future.delayed(const Duration(milliseconds: 1500)); // Show for 1.5 seconds
+    if (!mounted) return;
     setState(() {
       _showSuccessOverlay = false;
     });
+  }
+
+  @override
+  void dispose() {
+    _pageController.removeListener(_pageListener);
+    _pageController.dispose();
+    super.dispose();
   }
 
   Future<void> _completeOnboarding() async {
@@ -279,7 +291,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
 Widget _buildOnboardingGraphic(BuildContext context, String image) {
   final color = Theme.of(context).colorScheme.primary;
-  IconData icon;
+  FaIconData icon;
   final key = image.toLowerCase();
   if (key.contains('welcome')) {
     icon = FontAwesomeIcons.wallet;

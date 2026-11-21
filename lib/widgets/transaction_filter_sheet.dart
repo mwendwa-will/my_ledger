@@ -5,6 +5,7 @@ import '../models/transaction_filter.dart';
 import '../models/enums.dart';
 import '../providers/category_provider.dart';
 import '../providers/account_provider.dart';
+import '../providers/settings_provider.dart';
 
 /// Bottom sheet for filtering transactions
 class TransactionFilterSheet extends ConsumerStatefulWidget {
@@ -109,6 +110,7 @@ class _TransactionFilterSheetState
     final theme = Theme.of(context);
     final categoriesAsync = ref.watch(categoriesProvider);
     final accountsAsync = ref.watch(accountsProvider);
+    final currency = ref.watch(currencySymbolProvider);
 
     return DraggableScrollableSheet(
       initialChildSize: 0.9,
@@ -217,10 +219,10 @@ class _TransactionFilterSheetState
                           Expanded(
                             child: TextField(
                               controller: _minAmountController,
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: 'Min',
-                                prefixText: '\$ ',
-                                border: OutlineInputBorder(),
+                                prefixText: '$currency ',
+                                border: const OutlineInputBorder(),
                               ),
                               keyboardType: TextInputType.number,
                               onChanged: (value) {
@@ -235,10 +237,10 @@ class _TransactionFilterSheetState
                           Expanded(
                             child: TextField(
                               controller: _maxAmountController,
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: 'Max',
-                                prefixText: '\$ ',
-                                border: OutlineInputBorder(),
+                                prefixText: '$currency ',
+                                border: const OutlineInputBorder(),
                               ),
                               keyboardType: TextInputType.number,
                               onChanged: (value) {

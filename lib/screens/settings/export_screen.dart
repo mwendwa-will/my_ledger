@@ -27,7 +27,7 @@ class _ExportDataScreenState extends ConsumerState<ExportDataScreen> {
           : null,
     );
 
-    if (picked != null) {
+    if (picked != null && mounted) {
       setState(() {
         _startDate = picked.start;
         _endDate = picked.end;
@@ -103,7 +103,7 @@ class _ExportDataScreenState extends ConsumerState<ExportDataScreen> {
         );
       }
     } finally {
-      setState(() => _isExporting = false);
+      if (mounted) setState(() => _isExporting = false);
     }
   }
 
@@ -124,7 +124,7 @@ class _ExportDataScreenState extends ConsumerState<ExportDataScreen> {
         );
       }
     } finally {
-      setState(() => _isExporting = false);
+      if (mounted) setState(() => _isExporting = false);
     }
   }
 

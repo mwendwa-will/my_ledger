@@ -5,7 +5,11 @@ import '../models/category.dart';
 import '../models/transaction_item.dart';
 import '../models/budget.dart';
 import '../models/enums.dart';
+import '../models/financial_goal.dart';
+import '../models/debt_plan.dart';
+import '../models/categorization_rule.dart';
 import '../utils/constants.dart';
+import '../utils/date_range_helper.dart';
 
 class DatabaseService {
   DatabaseService._init();
@@ -24,7 +28,7 @@ class DatabaseService {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _createDB,
       onConfigure: _onConfigure,
       onUpgrade: _upgradeDB,
@@ -34,13 +38,15 @@ class DatabaseService {
   Future<void> _upgradeDB(Database db, int oldVersion, int newVersion) async {
     // Migration to add `sort_order` column to categories (version 2)
     if (oldVersion < 2) {
-      try {
-        await db.execute(
-          'ALTER TABLE categories ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0',
-        );
-      } catch (e) {
-        // If the column already exists or another error occurs, ignore to avoid crashing upgrades
-      }
+      await db.execute(
+        'ALTER TABLE categories ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0',
+      );
+    }
+    if (oldVersion < 3) {
+      await db.execute(
+        'ALTER TABLE categories ADD COLUMN parent_id INTEGER REFERENCES categories(id) ON DELETE SET NULL',
+      );
+      await _createPlanningTables(db);
     }
   }
 
@@ -73,7 +79,9 @@ class DatabaseService {
         icon_code_point INTEGER NOT NULL,
         is_archived INTEGER NOT NULL DEFAULT 0,
         monthly_budget_limit REAL,
-        sort_order INTEGER NOT NULL DEFAULT 0
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        parent_id INTEGER,
+        FOREIGN KEY (parent_id) REFERENCES categories (id) ON DELETE SET NULL
       )
     ''');
 
@@ -148,8 +156,47 @@ class DatabaseService {
       )
     ''');
 
+    await _createPlanningTables(db);
+
     // Seed default categories
     await _seedCategories(db);
+  }
+
+  Future<void> _createPlanningTables(DatabaseExecutor db) async {
+    await db.execute('''
+      CREATE TABLE financial_goals (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        target_amount REAL NOT NULL,
+        current_amount REAL NOT NULL DEFAULT 0,
+        target_date TEXT,
+        account_id INTEGER,
+        category_id INTEGER,
+        FOREIGN KEY (account_id) REFERENCES accounts (id) ON DELETE SET NULL,
+        FOREIGN KEY (category_id) REFERENCES categories (id) ON DELETE SET NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE debt_plans (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        balance REAL NOT NULL,
+        annual_interest_rate REAL NOT NULL DEFAULT 0,
+        minimum_payment REAL NOT NULL DEFAULT 0,
+        due_day INTEGER,
+        account_id INTEGER,
+        FOREIGN KEY (account_id) REFERENCES accounts (id) ON DELETE SET NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE categorization_rules (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        match_text TEXT NOT NULL,
+        category_id INTEGER NOT NULL,
+        is_active INTEGER NOT NULL DEFAULT 1,
+        FOREIGN KEY (category_id) REFERENCES categories (id) ON DELETE CASCADE
+      )
+    ''');
   }
 
   Future<void> _seedCategories(Database db) async {
@@ -309,6 +356,7 @@ class DatabaseService {
 
   Future<int> createCategory(Category category) async {
     final db = await instance.database;
+    await _validateCategoryParent(db, category);
     return await db.insert('categories', category.toMap());
   }
 
@@ -323,12 +371,50 @@ class DatabaseService {
 
   Future<int> updateCategory(Category category) async {
     final db = await instance.database;
+    await _validateCategoryParent(db, category);
     return await db.update(
       'categories',
       category.toMap(),
       where: 'id = ?',
       whereArgs: [category.id],
     );
+  }
+
+  Future<void> _validateCategoryParent(
+    DatabaseExecutor db,
+    Category category,
+  ) async {
+    final parentId = category.parentId;
+    if (parentId == null) return;
+    if (parentId == category.id) {
+      throw ArgumentError('A category cannot be its own parent.');
+    }
+    final parentRows = await db.query(
+      'categories',
+      where: 'id = ?',
+      whereArgs: [parentId],
+      limit: 1,
+    );
+    if (parentRows.isEmpty) {
+      throw ArgumentError('Parent category does not exist.');
+    }
+    final parent = Category.fromMap(parentRows.first);
+    if (parent.type != category.type || parent.parentId != null) {
+      throw ArgumentError(
+        'A subcategory must have a parent of the same type at the top level.',
+      );
+    }
+    if (category.id != null) {
+      final children = await db.query(
+        'categories',
+        where: 'parent_id = ?',
+        whereArgs: [category.id],
+        limit: 1,
+      );
+      if (children.isNotEmpty) {
+        throw ArgumentError('A category with subcategories cannot be nested.');
+      }
+    }
   }
 
   Future<List<Category>> getAllCategories() async {
@@ -399,6 +485,93 @@ class DatabaseService {
     return count ?? 0;
   }
 
+  Future<List<CategorizationRule>> getCategorizationRules() async {
+    final db = await instance.database;
+    final rows = await db.query('categorization_rules', orderBy: 'id ASC');
+    return rows.map(CategorizationRule.fromMap).toList();
+  }
+
+  Future<int> saveCategorizationRule(CategorizationRule rule) async {
+    final db = await instance.database;
+    if (rule.id == null) {
+      return db.insert('categorization_rules', rule.toMap());
+    }
+    return db.update(
+      'categorization_rules',
+      rule.toMap()..remove('id'),
+      where: 'id = ?',
+      whereArgs: [rule.id],
+    );
+  }
+
+  Future<int?> suggestCategoryForDescription(
+    String description, {
+    required TransactionType type,
+  }) async {
+    final normalizedDescription = description.trim().toLowerCase();
+    if (normalizedDescription.isEmpty) return null;
+    final rules = await getCategorizationRules();
+    for (final rule in rules) {
+      if (rule.isActive &&
+          normalizedDescription.contains(rule.matchText.trim().toLowerCase())) {
+        final category = await getCategory(rule.categoryId);
+        if (category != null && !category.isArchived && category.type == type) {
+          return rule.categoryId;
+        }
+      }
+    }
+    return null;
+  }
+
+  Future<int> deleteCategorizationRule(int id) async {
+    final db = await instance.database;
+    return db.delete('categorization_rules', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<List<FinancialGoal>> getFinancialGoals() async {
+    final db = await instance.database;
+    final rows = await db.query('financial_goals', orderBy: 'id DESC');
+    return rows.map(FinancialGoal.fromMap).toList();
+  }
+
+  Future<int> saveFinancialGoal(FinancialGoal goal) async {
+    final db = await instance.database;
+    if (goal.id == null) return db.insert('financial_goals', goal.toMap());
+    return db.update(
+      'financial_goals',
+      goal.toMap()..remove('id'),
+      where: 'id = ?',
+      whereArgs: [goal.id],
+    );
+  }
+
+  Future<int> deleteFinancialGoal(int id) async {
+    final db = await instance.database;
+    return db.delete('financial_goals', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<List<DebtPlan>> getDebtPlans() async {
+    final db = await instance.database;
+    final rows = await db.query('debt_plans', orderBy: 'id DESC');
+    return rows.map(DebtPlan.fromMap).toList();
+  }
+
+  Future<int> saveDebtPlan(DebtPlan debt) async {
+    final db = await instance.database;
+    if (debt.id == null) return db.insert('debt_plans', debt.toMap());
+    return db.update(
+      'debt_plans',
+      debt.toMap()..remove('id'),
+      where: 'id = ?',
+      whereArgs: [debt.id],
+    );
+  }
+
+  Future<int> deleteDebtPlan(int id) async {
+    final db = await instance.database;
+    return db.delete('debt_plans', where: 'id = ?', whereArgs: [id]);
+  }
+
   Future<int> getTotalTransactionCount() async {
     final db = await instance.database;
     final count = Sqflite.firstIntValue(
@@ -462,8 +635,8 @@ class DatabaseService {
       args.add(startDate.toIso8601String());
     }
     if (endDate != null) {
-      whereClause += ' AND date <= ?';
-      args.add(endDate.toIso8601String());
+      whereClause += ' AND date < ?';
+      args.add(exclusiveEndDate(endDate).toIso8601String());
     }
     if (categoryId != null) {
       whereClause += ' AND category_id = ?';
@@ -522,8 +695,8 @@ class DatabaseService {
       args.add(startDate.toIso8601String());
     }
     if (endDate != null) {
-      whereClause += ' AND date <= ?';
-      args.add(endDate.toIso8601String());
+      whereClause += ' AND date < ?';
+      args.add(exclusiveEndDate(endDate).toIso8601String());
     }
 
     // Amount range
@@ -782,6 +955,78 @@ class DatabaseService {
     };
   }
 
+  Future<Map<String, double>> getAnnualSummary(int year) async {
+    final db = await instance.database;
+    final rows = await db.rawQuery(
+      '''
+      SELECT
+        SUM(CASE WHEN type = ? THEN amount ELSE 0 END) AS income,
+        SUM(CASE WHEN type = ? THEN amount ELSE 0 END) AS expense
+      FROM transactions
+      WHERE strftime('%Y', date) = ?
+      ''',
+      [
+        TransactionType.income.index,
+        TransactionType.expense.index,
+        year.toString(),
+      ],
+    );
+    return {
+      'income': (rows.first['income'] as num?)?.toDouble() ?? 0,
+      'expense': (rows.first['expense'] as num?)?.toDouble() ?? 0,
+    };
+  }
+
+  Future<Map<int, double>> getAnnualAccountActivity(int year) async {
+    final db = await instance.database;
+    final rows = await db.rawQuery(
+      '''
+      SELECT account_id, SUM(amount_change) AS net_activity
+      FROM (
+        SELECT account_id,
+          CASE WHEN type = ? THEN amount ELSE -amount END AS amount_change
+        FROM transactions
+        WHERE strftime('%Y', date) = ?
+        UNION ALL
+        SELECT to_account_id AS account_id, amount AS amount_change
+        FROM transactions
+        WHERE type = ? AND to_account_id IS NOT NULL
+          AND strftime('%Y', date) = ?
+      )
+      GROUP BY account_id
+      ''',
+      [
+        TransactionType.income.index,
+        year.toString(),
+        TransactionType.transfer.index,
+        year.toString(),
+      ],
+    );
+    return {
+      for (final row in rows)
+        row['account_id'] as int: (row['net_activity'] as num).toDouble(),
+    };
+  }
+
+  Future<Map<int, double>> getAnnualCategorySpending(int year) async {
+    final db = await instance.database;
+    final rows = await db.rawQuery(
+      '''
+      SELECT category_id, SUM(amount) AS total
+      FROM transactions
+      WHERE type = ? AND category_id IS NOT NULL
+        AND strftime('%Y', date) = ?
+      GROUP BY category_id
+      ORDER BY total DESC
+      ''',
+      [TransactionType.expense.index, year.toString()],
+    );
+    return {
+      for (final row in rows)
+        row['category_id'] as int: (row['total'] as num).toDouble(),
+    };
+  }
+
   Future<Map<int, double>> getCategorySpending(int month, int year) async {
     final db = await instance.database;
     final m = month.toString().padLeft(2, '0');
@@ -817,12 +1062,12 @@ class DatabaseService {
 
     final result = await db.rawQuery(
       '''
-      SELECT c.id, c.name, c.type, c.color, c.icon_code_point, c.is_archived, c.monthly_budget_limit, c.sort_order,
+      SELECT c.id, c.name, c.type, c.color, c.icon_code_point, c.is_archived, c.monthly_budget_limit, c.sort_order, c.parent_id,
              COUNT(t.id) as transaction_count
       FROM categories c
       JOIN transactions t ON c.id = t.category_id
       WHERE t.type = ? AND t.date >= ?
-      GROUP BY c.id, c.name, c.type, c.color, c.icon_code_point, c.is_archived, c.monthly_budget_limit, c.sort_order
+      GROUP BY c.id, c.name, c.type, c.color, c.icon_code_point, c.is_archived, c.monthly_budget_limit, c.sort_order, c.parent_id
       ORDER BY transaction_count DESC
       LIMIT ?
     ''',
